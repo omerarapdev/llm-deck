@@ -1,0 +1,192 @@
+/* Part 04: styles for this part's custom figures (Language modeling). */
+.lm-mono { font-family: var(--font-mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+
+/* token rows (text -> chips) */
+.lm-tokrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 2.2em; --chip-fs: 0.84rem; }
+.lm-tokrow-n { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-3); margin-left: 4px; }
+
+/* 4.1 UTF-8 cards */
+.lm-u8-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+.lm-u8-card {
+  display: grid; justify-items: center; gap: 1px; min-width: 62px; padding: 5px 6px 4px;
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; font-family: var(--font-mono);
+}
+.lm-u8-card:hover { border-color: var(--ink-2); }
+.lm-u8-card.on { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); background: var(--hi); }
+.lm-u8-g { font-family: var(--font-body); font-size: 1.3rem; line-height: 1.25; min-height: 1.25em; }
+.lm-u8-cp { font-size: 0.68rem; color: var(--ink-3); }
+.lm-u8-b { font-size: 0.76rem; font-weight: 600; }
+.lm-u8-more { align-self: center; font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-3); }
+.lm-u8-bits { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; }
+.lm-u8-byte { white-space: nowrap; padding: 0 2px; border-bottom: 1px solid var(--rule); }
+.lm-u8-pre { color: var(--red); font-weight: 700; }
+
+/* 4.1 vocabulary grid */
+.lm-vocab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 3px; }
+.lm-vc {
+  display: flex; align-items: baseline; gap: 5px; min-width: 0; overflow: hidden; padding: 2px 5px;
+  border: 1px solid var(--rule-2); background: var(--plate); font-family: var(--font-mono); font-size: 0.74rem; white-space: pre;
+}
+.lm-vc.base { background: var(--plate-2); }
+.lm-vc.on { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); background: var(--hi); }
+.lm-vc-id { flex: none; min-width: 1.9em; text-align: right; color: var(--ink-3); font-size: 0.64rem; }
+.lm-vc-t { display: inline-flex; align-items: baseline; min-width: 0; overflow: hidden; }
+.lm-vc .sp { display: inline-block; width: 0.5em; height: 0.32em; margin-right: 0.1em; border: 1.25px solid var(--ink-3); border-top: none; }
+.lm-sw-base { background: var(--plate-2); }
+.lm-sw-merge { background: var(--plate); }
+.lm-sw-on { background: var(--hi); border-color: var(--red) !important; }
+
+/* 4.1 one-hot strips */
+.lm-oh-svg { display: block; width: 100%; min-width: 480px; height: auto; }
+.lm-oh-c { fill: var(--plate-2); stroke: var(--rule); stroke-width: 0.4; }
+.lm-oh-c.on { fill: var(--red); stroke: var(--red); }
+.lm-oh-l { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.lm-oh-t { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-3); }
+
+/* small sub-headings inside plates */
+.lm-sub { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+
+/* 4.2 BPE on three words */
+.lm-bm-words { display: grid; gap: 6px; }
+.lm-bm-row { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); align-items: center; gap: 8px; }
+.lm-bm-n { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-2); text-align: right; }
+.lm-bm-pairs { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--rule); background: var(--paper); }
+.lm-bm-head { font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.lm-bm-pair { display: flex; align-items: center; gap: 10px; --chip-fs: 0.8rem; padding: 1px 4px; }
+.lm-bm-pair.next { background: var(--hi); box-shadow: inset 3px 0 0 var(--red); }
+.lm-bm-pair .num { font-weight: 600; }
+.lm-bm-tie { font-family: var(--font-hand); font-size: 1.05rem; color: var(--red); }
+.lm-pair { display: inline-flex; align-items: center; gap: 3px; }
+.lm-plus { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-3); }
+.lm-bm-log { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.86rem; color: var(--ink-2); min-height: 1.6em; }
+.lm-bm-k { font-weight: 600; }
+.lm-bm-m { font-family: var(--font-mono); font-size: 0.78rem; white-space: pre; }
+
+/* 4.2 encoding trace */
+.lm-wbtn {
+  display: inline-flex; align-items: baseline; padding: 0.15em 0.45em; border: 1px dashed var(--ink-3); background: var(--plate); color: var(--ink);
+  font-family: var(--font-mono); font-size: 0.84rem; white-space: pre; cursor: pointer;
+}
+.lm-wbtn.on { border: 1px solid var(--red); background: var(--hi); box-shadow: inset 0 0 0 1px var(--red); }
+.lm-trace { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lm-trace-row { display: grid; grid-template-columns: minmax(9.5em, max-content) minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 3px 0; border-bottom: 1px dotted var(--rule); --chip-fs: 0.8rem; }
+.lm-trace-row.end { border-bottom: 0; }
+.lm-trace-k { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-2); white-space: pre; }
+
+/* 4.2 decoding round trip */
+.lm-dec { font-family: var(--font-mono); font-size: 0.82rem; overflow-wrap: anywhere; }
+.lm-dec-cmp { margin: 0; font-family: var(--font-mono); font-size: 0.86rem; line-height: 1.7; overflow-wrap: anywhere; }
+.lm-keep { color: var(--ink); }
+.lm-lost { color: var(--bad); font-weight: 700; text-decoration: line-through; background: var(--red-soft); padding: 0 1px; }
+
+/* 4.2 byte tokens */
+.chip.lm-byte { min-width: 2.1em; }
+.chip.lm-byte.hi { border-color: var(--s1); background: color-mix(in oklab, var(--s1) 14%, var(--plate)); }
+
+/* 4.2 padded batch */
+.lm-batch { border-collapse: collapse; font-family: var(--font-mono); font-size: 0.78rem; --chip-fs: 0.76rem; }
+.lm-batch th { padding: 3px 8px 3px 0; text-align: right; font-family: var(--font-display); font-weight: 600; font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.lm-batch tr:first-child th { text-align: center; padding: 0 2px 4px; }
+.lm-batch td { padding: 2px 2px; text-align: center; }
+.lm-batch-loss td { font-weight: 700; border-bottom: 1px solid var(--rule-2); }
+.lm-batch-loss td.on { color: var(--good); }
+.lm-batch-loss td.off { color: var(--ink-3); }
+.chip.lm-spc { border-style: dashed; border-color: var(--blue); color: var(--blue); font-weight: 700; }
+.chip.lm-spc.pad { border-color: var(--ink-3); color: var(--ink-3); }
+
+/* JetBrains Mono turns <| and |> into arrows; special-token names must show their characters */
+.lm-nolig, .lm-batch, .lm-chips { font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; }
+.lm-chips { display: inline-flex; flex-wrap: wrap; gap: 3px; --chip-fs: 0.8rem; }
+
+/* 4.3 chain rule table */
+.lm-selwrap { display: grid; gap: 2px; }
+.lm-chain td { min-width: 4.4em; }
+.lm-chain td.lm-unc { color: var(--blue); font-weight: 700; }
+.lm-chain td.lm-zero { color: var(--bad); font-weight: 700; background: var(--red-soft); }
+
+/* 4.3 perplexity bars and shared chart marks */
+.lm-ppl-svg { display: block; width: 100%; min-width: 480px; height: auto; }
+.lm-grid { stroke: var(--grid-2); stroke-width: 1; }
+.lm-axis { stroke: var(--frame); stroke-width: 1.25; }
+.lm-tick { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-3); }
+.lm-val { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.lm-ppl-bar { fill: var(--ink-2); }
+.lm-floor { stroke: var(--red); stroke-width: 2; }
+
+/* 4.4 bigram matrix */
+.lm-bg-svg { display: block; width: 100%; max-width: 560px; min-width: 470px; height: auto; margin-inline: auto; }
+.lm-bg-cell { fill: var(--plate); stroke: var(--rule-2); stroke-width: 0.6; cursor: pointer; }
+.lm-bg-cell.on { stroke: var(--frame); stroke-width: 0.6; }
+.lm-bg-sel { fill: none; stroke: var(--red); stroke-width: 1.8; pointer-events: none; }
+.lm-bg-row { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-2); cursor: pointer; }
+.lm-bg-row.on { fill: var(--red); font-weight: 700; }
+.lm-bg-col { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-2); }
+.lm-bg-ax { font-family: var(--font-hand); font-size: 14px; fill: var(--red); }
+.lm-bg-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border-left: 3px solid var(--red); background: var(--paper); --chip-fs: 0.8rem; font-size: 0.86rem; }
+.lm-bg-lead { color: var(--ink-2); }
+.lm-bg-item { display: inline-flex; align-items: center; gap: 5px; }
+.lm-bg-item .num { font-size: 0.8rem; }
+
+/* 4.4 bigram samples */
+.lm-bs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; min-height: 13.5em; }
+.lm-bs-list li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 8px; background: var(--paper); border: 1px solid var(--rule-2); }
+.lm-bs-mark { font-weight: 700; text-align: center; }
+.lm-bs-list li.ok .lm-bs-mark { color: var(--good); }
+.lm-bs-list li.bad .lm-bs-mark { color: var(--bad); }
+.lm-bs-q { font-size: 0.8rem; overflow-wrap: anywhere; white-space: normal; }
+.lm-bs-n { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-3); white-space: nowrap; }
+
+/* 4.4 n-gram bars above the floor */
+.lm-ppl-bar.over { fill: var(--blue); }
+
+/* 4.5 cosine matrix */
+.lm-cos-cell { stroke: var(--rule-2); stroke-width: 0.5; cursor: pointer; }
+
+/* 4.6 greedy table */
+.lm-gtab { border-collapse: collapse; width: 100%; font-size: 0.82rem; --chip-fs: 0.78rem; }
+.lm-gtab th { text-align: left; font-family: var(--font-display); font-weight: 600; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); padding: 2px 6px; border-bottom: 1.5px solid var(--frame); }
+.lm-gtab td { padding: 4px 6px; border-bottom: 1px solid var(--rule-2); }
+.lm-gtab .r { text-align: right; }
+.lm-gtop { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.lm-gopt { display: inline-flex; align-items: center; gap: 4px; opacity: 0.6; }
+.lm-gopt.on { opacity: 1; }
+.lm-gopt.on .chip { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); background: var(--hi); }
+.lm-gopt .num { font-size: 0.78rem; }
+
+/* 4.6 probability rows (temperature, top-k / top-p) */
+.lm-trows { display: grid; gap: 3px; --chip-fs: 0.78rem; }
+.lm-trow { display: grid; grid-template-columns: 6.6rem 4.4rem 3.6rem minmax(60px, 1fr) 3.9rem; gap: 8px; align-items: center; font-size: 0.8rem; }
+.lm-trow.k { grid-template-columns: 6.6rem 4.4rem 4.6rem minmax(60px, 1fr) 3.4rem; }
+.lm-trow.head { font-family: var(--font-display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1.5px solid var(--frame); padding-bottom: 2px; }
+.lm-trow .r { text-align: right; }
+.lm-trow .num { font-size: 0.78rem; }
+.lm-trow > .chip { justify-self: start; }
+.lm-trow.bad > .chip { border-color: var(--bad); color: var(--bad); }
+.lm-trow.cut > .chip { text-decoration: line-through; opacity: 0.55; }
+.lm-trow.cut .num { color: var(--ink-3); }
+.lm-other { font-family: var(--font-mono); font-size: 0.74rem; color: var(--bad); }
+.lm-pbar { display: block; height: 12px; position: relative; overflow: hidden; background: repeating-linear-gradient(-45deg, var(--rule-2) 0 1px, transparent 1px 5px); border-left: 1.5px solid var(--frame); }
+.lm-pfill { display: block; height: 100%; background: var(--ink-2); }
+.lm-pfill.bad { background: var(--bad); }
+.lm-trow.bad .lm-pfill { background: var(--bad); }
+
+/* long inline code (whole queries) may wrap in prose */
+.prose code.lm-wrap { white-space: normal; overflow-wrap: anywhere; }
+
+/* narrow screens: drop the third column of the probability rows */
+@media (max-width: 760px) {
+  .lm-trow, .lm-trow.k { grid-template-columns: 5.4rem 3.4rem minmax(36px, 1fr) 3.3rem; gap: 6px; }
+  .lm-trow .lm-c3 { display: none; }
+  .lm-trow { font-size: 0.76rem; }
+}
+
+/* 4.6 passes and positions */
+.lm-pass-svg { display: block; width: 100%; max-width: 470px; min-width: 330px; height: auto; margin-inline: auto; }
+.lm-pass-sq { fill: var(--s1); }
+.lm-pass-sq.again { fill: var(--plate-2); stroke: var(--s1); stroke-width: 1; stroke-dasharray: 2 1.5; }
+.lm-pass-l { font-family: var(--font-display); font-weight: 600; font-size: 12.5px; fill: var(--ink-2); }
+.lm-pass-t { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.lm-sw-again { background: var(--plate-2); border: 1px dashed var(--s1) !important; }
+
+/* 4.3 undefined grammar conditional */
+.lm-chain td.lm-undef { color: var(--ink-3); }

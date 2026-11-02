@@ -1,0 +1,10 @@
+{
+  "name": "one-query-deck",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "^25.0.1",
+    "katex": "^0.16.11",
+    "puppeteer-core": "^23.11.1"
+  }
+}

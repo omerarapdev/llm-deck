@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One Query, End to End</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="An interactive deck that teaches how large language models are trained and served by following one SQL query through a real 9,968-parameter model running in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400..700&family=Atkinson+Hyperlegible+Next:ital,wght@0,400..800;1,400..800&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
+<link rel="stylesheet" href="css/deck.css">
+</head>
+<body>
+<div class="app">
+  <header class="strip" aria-label="Running example">
+    <div class="strip-label">
+      <span class="strip-kicker">Running example</span>
+      <span class="strip-stage" id="strip-stage"></span>
+    </div>
+    <div id="strip-tokens" class="scroll-x" aria-live="polite"></div>
+    <div class="strip-actions">
+      <button type="button" class="icon-btn" id="notes-btn" aria-expanded="false" aria-controls="notes" title="What we know so far (N)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+        <span class="lbl">Notes</span><span class="badge" id="notes-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="slides">
+
+<!-- ================================================================== START -->
+<section class="slide" id="title" data-pass="0" data-title="One query, end to end" data-strip="text" data-stage="Plain text">
+  <div class="slide-inner cover">
+    <div class="cover-grid">
+      <div class="narrative">
+        <p class="eyebrow"><span class="pass">LLM training &amp; inference</span><span>from first principles</span></p>
+        <h1 class="cover-title">One query, <em>end to end</em></h1>
+        <p class="cover-lede">We follow one line of SQL through a real language model: how it becomes tokens, how the model predicts it, how training shapes the model, what changes on thousands of GPUs, how it is served, and how it is tuned into an assistant.</p>
+        <div class="cover-actions">
+          <button type="button" class="btn btn-primary" data-go="next">Start the tour →</button>
+          <span class="resume" id="resume" hidden>or <button type="button" class="btn">Resume at <span data-resume-title></span></button></span>
+        </div>
+        <p class="kbd-help"><span><kbd>←</kbd> <kbd>→</kbd> move between slides</span><span>swipe on touch screens</span><span><kbd>M</kbd> slide list</span><span><kbd>N</kbd> notes</span></p>
+      </div>
+      <figure class="cover-console" data-widget="cover">
+        <div class="console-line"><span class="prompt">query&gt; </span><span class="typed">SELECT name FROM users WHERE id = 7;</span><span class="caret" aria-hidden="true"></span></div>
+        <div class="console-row" data-row="tokens" aria-label="The query as 9 tokens"></div>
+        <div class="console-pred" data-row="pred"></div>
+        <div class="console-meta">
+          <div class="stat"><div class="stat-v">1</div><div class="stat-l">query</div></div>
+          <div class="stat"><div class="stat-v">9</div><div class="stat-l">tokens</div></div>
+          <div class="stat"><div class="stat-v" data-check="params">9,968</div><div class="stat-l">parameters</div></div>
+          <div class="stat"><div class="stat-v">5</div><div class="stat-l">passes</div></div>
+        </div>
+        <button type="button" class="btn console-replay" data-act="replay">Replay</button>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="how" data-pass="0" data-title="How this deck works" data-strip="text" data-stage="Plain text"
+  data-fact="Our running example is the query <code>SELECT name FROM users WHERE id = 7;</code>. Every number about our query comes from one small model running in your browser. Figures about real systems are cited.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Start</span><span>2 of 3</span></p>
+      <h2 class="slide-title">Five passes over the same query</h2>
+      <p class="lede">The deck teaches in five passes. Each pass takes the same query a level deeper and builds on what the previous pass established.</p>
+      <p>The strip at the top of the screen always shows the query in its current form: plain text, characters, tokens, or token ids. When a slide changes the query, the strip changes with it.</p>
+      <p><b>Notes</b> (top right) keeps a running list of the facts we have established, so you can check back without leaving the slide.</p>
+      <p>Every probability, attention weight and loss about our query comes from a real <span class="num" data-check="params">9,968</span>-parameter transformer trained for this deck. It runs live in your browser, and its training curves were recorded while it trained.</p>
+      <p class="takeaway">Same example, five levels of zoom: the black box, its insides, its training at scale, serving it, and post-training.</p>
+    </div>
+    <figure class="figure" data-widget="passes">
+      <div class="fig-head"><span class="fig-title">The five passes</span><span class="fig-sub">Select one to jump there</span></div>
+      <ol class="pass-list"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="world" data-pass="0" data-title="A tiny world of SQL" data-strip="text" data-stage="Plain text"
+  data-fact="The training data: <code>SELECT c1 FROM t WHERE c2 = v;</code> over 3 tables, with c1 and c2 columns of t, c2 ≠ c1, v from 1 to 9. That allows <b>270</b> distinct queries.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Start</span><span>3 of 3</span></p>
+      <h2 class="slide-title">A tiny world: three tables, one sentence pattern</h2>
+      <p class="lede">Our model has only ever read queries from this small database. Every query has the same shape:</p>
+      <p class="formula"><code>SELECT <i>c1</i> FROM <i>t</i> WHERE <i>c2</i> = <i>v</i>;</code></p>
+      <ul>
+        <li><i>c1</i> and <i>c2</i> are columns of table <i>t</i>.</li>
+        <li><i>c2</i> is never the same column as <i>c1</i>.</li>
+        <li><i>v</i> is a digit from 1 to 9.</li>
+      </ul>
+      <p>These rules allow exactly <b>270</b> different queries. Nobody gives the model these rules. It sees example queries and has to discover the rules itself.</p>
+      <p class="takeaway">A language model learns the structure of its data from examples alone. Our data is small enough that we can check exactly what it learned.</p>
+    </div>
+    <figure class="figure dots" data-widget="world">
+      <div class="fig-head"><span class="fig-title">The schema</span><span class="fig-sub">tables and their columns</span></div>
+      <div class="schema roles"></div>
+      <div class="fig-head"><span class="fig-title">Example queries</span><button type="button" class="btn" data-act="sample">Sample 6 more</button></div>
+      <ol class="sample-list"></ol>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-v">270</div><div class="stat-l">possible queries</div></div>
+        <div class="stat"><div class="stat-v">768,000</div><div class="stat-l">queries seen in training</div></div>
+        <div class="stat"><div class="stat-v">2,000</div><div class="stat-l">queries used to build the tokenizer</div></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== PASS 1 -->
+<section class="slide opener" id="p1" data-pass="1" data-title="Pass 1: the model as a black box" data-strip="text" data-stage="Plain text">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 1 · The whole loop</span><span>overview</span></p>
+      <h2 class="slide-title">Pass 1: the model as a black box</h2>
+      <p class="lede">So far our query is just text. In this pass we treat the model as a black box: what goes in, what comes out, how text gets generated, and what training changes.</p>
+      <p class="aside">We will not look inside the model yet. That is Pass 2.</p>
+    </div>
+    <figure class="figure" data-widget="opener">
+      <div class="fig-head"><span class="fig-title">What we know about our query so far</span></div>
+      <ul class="op-facts"></ul>
+      <div class="fig-head"><span class="fig-title">In this pass</span></div>
+      <ol class="op-slides"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="predict" data-pass="1" data-title="Predict the next token" data-strip="tokens prefix:3" data-stage="Prefix → next token"
+  data-fact="After <code>SELECT name FROM</code> the model gives <code>users</code> probability <b>1.000</b>. After <code>WHERE</code> it splits about evenly between <code>id</code>, <code>email</code> and <code>age</code>.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 1 · The whole loop</span><span>1 of 4</span></p>
+      <h2 class="slide-title">An LLM does one thing: predict the next token</h2>
+      <p class="lede">Give the model the beginning of a query. It returns a probability for each of the <span class="num" data-check="vocab">113</span> tokens it knows. That is the entire interface.</p>
+      <p>Step through our query. Some next tokens are certain: after <code>SELECT name FROM</code> the model puts <span class="num" data-check="p:final:2:63">1.000</span> on <code>users</code>, the only table with a <code>name</code> column.</p>
+      <p>Others are uncertain because the data is: after <code>WHERE</code> three columns are allowed, and after <code>=</code> any of nine digits.</p>
+      <p class="takeaway">A language model maps a prefix to a probability distribution over the next token. Everything else is built on top of that.</p>
+    </div>
+    <figure class="figure" data-widget="predict">
+      <div class="fig-head"><span class="fig-title">Model output for the next token</span><span class="fig-sub">top 6 of 113 · violet = what actually comes next</span></div>
+      <div class="prefix-row" aria-live="polite"></div>
+      <div class="pred-bars"></div>
+      <p class="pred-note note-inline" aria-live="polite"></p>
+      <div class="ctl-row pred-ctl"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="generate" data-pass="1" data-title="Generation is a loop" data-strip="tokens" data-stage="9 tokens"
+  data-fact="Generation = predict, sample, append, repeat: one forward pass per new token. At temperature 1, <b>99.7%</b> of sampled queries follow the grammar; at 3, only <b>54.1%</b>.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 1 · The whole loop</span><span>2 of 4</span></p>
+      <h2 class="slide-title">Writing text is the same prediction, in a loop</h2>
+      <p class="lede">To generate, pick one token from the predicted distribution, append it, and feed the longer prefix back in. Each new token costs one more pass through the model.</p>
+      <p><b>Temperature</b> divides the model's raw scores before they become probabilities. Below 1 it sharpens the distribution toward the top token; above 1 it flattens it.</p>
+      <p>Across 2,000 samples, <span class="num" data-check="valid:1">99.7%</span> of queries follow the grammar at temperature 1, <span class="num" data-check="valid:2">90.2%</span> at 2, and <span class="num" data-check="valid:3">54.1%</span> at 3. Always taking the single most likely token gives <code>SELECT id FROM products WHERE title = 3;</code></p>
+      <p class="takeaway">Text generation is a loop around next-token prediction. Temperature trades variety for correctness.</p>
+    </div>
+    <figure class="figure" data-widget="generate">
+      <div class="fig-head"><span class="fig-title">Generate a query</span><span class="fig-sub">real samples from the model</span></div>
+      <div class="ctl-row gen-ctl"></div>
+      <div class="gen-seq" aria-live="polite"></div>
+      <div class="gen-steps"></div>
+      <div class="fig-head"><span class="fig-title">Recent samples</span><span class="fig-sub gen-rate"></span></div>
+      <ol class="gen-log"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="learn" data-pass="1" data-title="Training makes the right token likely" data-strip="tokens" data-stage="8 training examples"
+  data-fact="Loss = −ln p(true next token). Untrained: about ln 113 = <b>4.73</b> per token. After 6,000 steps: <b>0.6942</b>, averaged over the data.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 1 · The whole loop</span><span>3 of 4</span></p>
+      <h2 class="slide-title">Training: make the right next token more likely</h2>
+      <p class="lede">Our one query is eight training examples: each prefix, paired with the token that actually came next.</p>
+      <p>The model is scored with <b>cross-entropy loss</b>: the negative log of the probability it gave the true next token. A sure, correct guess costs 0. A guess of 0.01 costs 4.6.</p>
+      <div class="formula"><math display="block"><mrow><mi>loss</mi><mo>=</mo><mo>−</mo><mi>ln</mi><mo>⁡</mo><mi>p</mi><mo stretchy="false">(</mo><mtext>true next token</mtext><mo stretchy="false">)</mo></mrow></math></div>
+      <p>An untrained model spreads probability evenly: about 1/113 per token, so each example costs about ln 113 = 4.73. Training adjusts all <span class="num" data-check="params">9,968</span> parameters to push that number down.</p>
+      <p class="takeaway">Training means nudging the parameters so the tokens that really come next get higher probability.</p>
+    </div>
+    <figure class="figure" data-widget="learn">
+      <div class="fig-head"><span class="fig-title">The 8 examples in our query</span><span class="learn-toggle"></span></div>
+      <div class="learn-table" role="table" aria-label="Probability and loss for each training example"></div>
+      <div class="stat-row learn-stats"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="loops" data-pass="1" data-title="Two loops" data-strip="tokens" data-stage="9 tokens"
+  data-fact="Training loop: batch → forward → loss → gradients → update. Inference loop: prompt → forward → sample → append.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 1 · The whole loop</span><span>4 of 4</span></p>
+      <h2 class="slide-title">Everything in this field is part of two loops</h2>
+      <p class="lede"><b>Training</b> repeats: read a batch of text, predict every next token, measure the loss, compute how each parameter should change, update the parameters.</p>
+      <p><b>Inference</b> repeats: run the model on the prompt, sample a token, append it, run again.</p>
+      <p>Each box below is a topic in its own right, and each one gets opened later in this deck. Select a box to jump to it.</p>
+      <p class="takeaway">Tokenizers, kernels, parallelism, serving systems and post-training are all ways of making one of these two loops better, faster, or bigger.</p>
+    </div>
+    <figure class="figure dots" data-widget="loops">
+      <div class="loops-grid"></div>
+      <p class="fig-cap loops-cap">Numbers in the boxes are slide numbers. “Plan” numbers are the study steps on the second-to-last slide.</p>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== PASS 2 -->
+<section class="slide opener" id="p2" data-pass="2" data-title="Pass 2: open the box" data-strip="tokens" data-stage="9 tokens">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>overview</span></p>
+      <h2 class="slide-title">Pass 2: open the box</h2>
+      <p class="lede">We know the model turns a prefix into probabilities, and that training makes the true next token more likely. Now we follow our query through every part of the model: tokenizer, vectors, attention, the residual stream, output scores, loss, gradients and the optimizer.</p>
+      <p class="aside">Every number comes from the real model. Hover or tap any colored cell to see its value.</p>
+    </div>
+    <figure class="figure" data-widget="opener">
+      <div class="fig-head"><span class="fig-title">What we know about our query so far</span></div>
+      <ul class="op-facts"></ul>
+      <div class="fig-head"><span class="fig-title">In this pass</span></div>
+      <ol class="op-slides"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="bpe" data-pass="2" data-title="Tokenization with BPE" data-strip="tokens ids" data-stage="Characters → tokens"
+  data-fact="Tokenizer: 39 characters + 74 learned merges = <b>113</b> tokens. Our query: 36 characters → <b>9</b> tokens with ids 43 93 47 63 52 58 53 107 10.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>1 of 14</span></p>
+      <h2 class="slide-title">Tokenization: from 36 characters to 9 tokens</h2>
+      <p class="lede">The model reads tokens from a fixed vocabulary. Byte-pair encoding (BPE) builds that vocabulary from data.</p>
+      <p>Start with single characters. Count every pair of neighbors in the corpus, merge the most frequent pair into a new token, and repeat. Our tokenizer made 74 merges over 2,000 queries.</p>
+      <p>Text is first split into words, each keeping its leading space, and merges never cross a word boundary. Ours stops at 74 merges because by then every word in its corpus is a single token. Production tokenizers stop at a chosen vocabulary size.</p>
+      <p>Keywords merge first because every query contains them. Then come pieces shared by several words: <code>er</code> (in <code>users</code>, <code>orders</code>, <code>user_id</code>) and <code>id</code> (in <code>id</code>, <code>user_id</code>).</p>
+      <p class="aside">Byte-level tokenizers, such as GPT-2's and Llama 3's, start from all 256 byte values, so any text can be encoded. Ours only knows the 39 characters in its corpus. Llama 3's vocabulary has 128,256 tokens.</p>
+      <p class="takeaway">BPE merges frequent neighbors until common strings are single tokens. Fewer tokens per text means less compute per text.</p>
+    </div>
+    <figure class="figure" data-widget="bpe">
+      <div class="fig-head"><span class="fig-title">Our query after <span class="bpe-k num">0</span> merges</span><span class="fig-sub"><span class="bpe-n num">36</span> tokens</span></div>
+      <div class="bpe-seq"></div>
+      <div class="bpe-merge note-inline" aria-live="polite"></div>
+      <div class="ctl-row bpe-ctl"></div>
+      <div class="bpe-try">
+        <label class="ctl-label" for="bpe-input">Tokenize your own text with all 74 merges</label>
+        <input class="txt" id="bpe-input" type="text" value="SELECT username FROM customers WHERE age = 42;" spellcheck="false" autocomplete="off">
+        <div class="bpe-out"></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="embed" data-pass="2" data-title="Token ids become vectors" data-strip="tokens ids" data-stage="Token ids → vectors"
+  data-fact="Embeddings: a 113 × 16 table (one row per token) plus an 8 × 16 table (one row per position). The model reads the first 8 tokens; <code>;</code> is only a target.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>2 of 14</span></p>
+      <h2 class="slide-title">Each token id selects a row of numbers</h2>
+      <p class="lede">The first layer is a table with one row of 16 numbers for each of the 113 tokens. Token id 63, <code>users</code>, selects row 63. Nothing else happens.</p>
+      <p>A second table holds one row per position. Its row is added, so <code>users</code> in position 3 enters the model differently than it would in position 6.</p>
+      <p>The model reads the first 8 tokens of our query. The 9th, <code>;</code>, is never an input, only something to predict.</p>
+      <p>The table entries are parameters, learned like all others. Training placed the nine digits almost on top of each other: in this grammar they are interchangeable.</p>
+      <p class="aside">Llama 3 8B's token table is 128,256 rows × 4,096 columns: 525 million numbers.</p>
+      <p class="takeaway">The model never sees text. It sees one learned vector per token, plus one per position.</p>
+    </div>
+    <figure class="figure" data-widget="embed">
+      <div class="fig-head"><span class="fig-title">Input vector for one position</span><span class="fig-sub">select a token</span></div>
+      <div class="emb-tokens"></div>
+      <div class="emb-sum"></div>
+      <div class="scale-legend"><span>−</span><span class="ramp div-ramp"></span><span>+</span><span>hover a cell for its value</span></div>
+      <div class="fig-head"><span class="fig-title">All 26 tokens our grammar uses, projected to 2 dimensions</span><span class="emb-toggle"></span></div>
+      <div class="emb-map"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="need" data-pass="2" data-title="Why the model must look back" data-strip="tokens ids focus:1,3 target:4" data-stage="8 input vectors"
+  data-fact="To predict after <code>FROM</code> the model needs the selected column; after <code>WHERE</code> it needs the table and the selected column.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>3 of 14</span></p>
+      <h2 class="slide-title">To predict, a position has to look back</h2>
+      <p class="lede">The vector at <code>FROM</code> is the same in every query, so on its own it cannot know which table comes next. The answer depends on an earlier token: <code>name</code> means <code>users</code>, <code>total</code> means <code>orders</code>.</p>
+      <p>At <code>WHERE</code> the model needs two earlier facts: the table, which says which columns exist, and the selected column, which the rules exclude.</p>
+      <p>Edit the query and watch the predictions follow the earlier tokens. Try combinations that never occur in the data, too.</p>
+      <p class="takeaway">Each prediction depends on specific earlier tokens. The mechanism that fetches them is attention.</p>
+    </div>
+    <figure class="figure" data-widget="need">
+      <div class="fig-head"><span class="fig-title">Edit the query</span><span class="fig-sub">the real model, live</span></div>
+      <div class="need-editor"></div>
+      <div class="need-grid">
+        <div class="need-col"><div class="fig-sub">Next token after <code>FROM</code></div><div class="need-from"></div></div>
+        <div class="need-col"><div class="fig-sub">Next token after <code>WHERE</code></div><div class="need-where"></div></div>
+      </div>
+      <p class="need-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="qkv" data-pass="2" data-title="Attention: queries and keys" data-strip="tokens ids focus:4" data-stage="8 vectors → q, k, v"
+  data-fact="Each head projects every position into a query, a key and a value (8 numbers each in our model). Score = q·k / √8.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>4 of 14</span></p>
+      <h2 class="slide-title">Attention, step 1: compare a query with every key</h2>
+      <p class="lede">Attention runs as several independent <b>heads</b>; our model has 2 heads in each of its 2 layers. In each head, every position's vector (after RMSNorm) is multiplied by three learned matrices, giving a <b>query</b> q, a <b>key</b> k and a <b>value</b> v of 8 numbers each. This query is a vector, unrelated to our SQL query.</p>
+      <p>To decide where position <i>i</i> should look, the head takes the dot product of its query with the key of every position up to <i>i</i>, divided by √8. A large score means that position is relevant.</p>
+      <div class="formula"><math display="block"><mrow><msub><mi>s</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>q</mi><mi>i</mi></msub><mo>·</mo><msub><mi>k</mi><mi>j</mi></msub></mrow><msqrt><mn>8</mn></msqrt></mfrac><mspace width="1em"></mspace><mtext>with</mtext><mspace width="0.6em"></mspace><mi>q</mi><mo>=</mo><mover><mi>x</mi><mo>^</mo></mover><msub><mi>W</mi><mi>Q</mi></msub><mo>,</mo><mspace width="0.3em"></mspace><mi>k</mi><mo>=</mo><mover><mi>x</mi><mo>^</mo></mover><msub><mi>W</mi><mi>K</mi></msub></mrow></math><span class="cap">x̂: the position's vector after RMSNorm</span></div>
+      <p>Below: layer 1, head 2, asking from <code>WHERE</code>. The key of <code>users</code> matches its query far better than any other.</p>
+      <p class="takeaway">The query says what a position is looking for; the keys say what each earlier position offers. Their dot product is the match score.</p>
+    </div>
+    <figure class="figure" data-widget="qkv">
+      <div class="ctl-row qkv-ctl"></div>
+      <div class="qkv-q"></div>
+      <div class="qkv-rows" role="table" aria-label="Keys and scores"></div>
+      <div class="scale-legend"><span>−</span><span class="ramp div-ramp"></span><span>+</span><span>8 numbers per vector · hover for values</span></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="mix" data-pass="2" data-title="Attention: weights and values" data-strip="tokens ids focus:4" data-stage="scores → weights → mix"
+  data-fact="At <code>WHERE</code>, layer 1 head 2 puts weight <b>1.00</b> on <code>users</code>; head 1 puts <b>0.98</b> on <code>name</code>.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>5 of 14</span></p>
+      <h2 class="slide-title">Attention, step 2: scores become weights, weights mix values</h2>
+      <p class="lede">Softmax turns the scores into weights that are positive and sum to 1. Each position may look at itself and earlier positions, never later ones. In training, all 8 predictions are computed in one pass, and this mask stops each position from seeing the token it must predict.</p>
+      <p>The head's output is the weighted sum of the value vectors. At <code>WHERE</code>, layer 1 head 2 puts <span class="num" data-check="att:1:2:4:3">1.00</span> on <code>users</code>, so its output is essentially the value vector of <code>users</code>: the table's identity, copied to where it is needed.</p>
+      <p>Each head outputs 8 numbers. The 2 heads' outputs are placed side by side, 16 numbers, and multiplied by an output matrix W<sub>O</sub> before being added to the stream.</p>
+      <div class="formula"><math display="block"><mrow><msub><mi>a</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><msup><mi>e</mi><msub><mi>s</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></msup><mrow><msub><mo>∑</mo><mrow><mi>m</mi><mo>≤</mo><mi>i</mi></mrow></msub><msup><mi>e</mi><msub><mi>s</mi><mrow><mi>i</mi><mi>m</mi></mrow></msub></msup></mrow></mfrac><mspace width="1.2em"></mspace><msub><mi>out</mi><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>j</mi><mo>≤</mo><mi>i</mi></mrow></munder><msub><mi>a</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>v</mi><mi>j</mi></msub></mrow></math></div>
+      <p class="takeaway">Attention is a learned, content-based lookup: compare, normalize, mix.</p>
+    </div>
+    <figure class="figure" data-widget="mix">
+      <div class="ctl-row mix-ctl"></div>
+      <div class="mix-rows" role="table" aria-label="Scores, weights and values"></div>
+      <div class="mix-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="heads" data-pass="2" data-title="Heads specialize" data-strip="tokens ids focus:4" data-stage="2 layers × 2 heads"
+  data-fact="Layer 1 head 1: <code>WHERE</code> → <code>name</code> (0.98). Layer 1 head 2: <code>WHERE</code> → <code>users</code> (1.00). Layer 2 head 2: <code>FROM</code> → <code>name</code> (0.95).">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>6 of 14</span></p>
+      <h2 class="slide-title">Different heads learn different jobs</h2>
+      <p class="lede">Our model has 2 layers with 2 heads each. Nobody assigned them roles. Training did.</p>
+      <p>At <code>WHERE</code>, layer 1 head 1 looks at <code>name</code> (<span class="num" data-check="att:1:1:4:1">0.98</span>) and head 2 looks at <code>users</code> (<span class="num" data-check="att:1:2:4:3">1.00</span>): the column to exclude, and the table whose columns are allowed. At <code>FROM</code>, layer 2 head 2 looks back at <code>name</code> (<span class="num" data-check="att:2:2:2:1">0.95</span>) to choose the table.</p>
+      <p>Change the query. The same heads do the same jobs, because every query has the same shape. Rows are the positions asking; columns are the positions they look at.</p>
+      <p class="takeaway">Heads specialize. In our model one head finds the table and another finds the column already used.</p>
+    </div>
+    <figure class="figure" data-widget="heads">
+      <div class="ctl-row heads-ctl"></div>
+      <div class="heads-grid"></div>
+      <div class="scale-legend"><span>0</span><span class="ramp seq-ramp"></span><span>1</span><span>attention weight · select a cell</span></div>
+      <p class="heads-read note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="block" data-pass="2" data-title="The residual stream" data-strip="tokens ids focus:4" data-stage="8 vectors, updated in place"
+  data-fact="A block: x ← x + Attention(norm(x)), then x ← x + MLP(norm(x)). Our MLP is 16 → 64 → 16 with GELU.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>7 of 14</span></p>
+      <h2 class="slide-title">Blocks add to a running sum, the residual stream</h2>
+      <p class="lede">Each position carries one vector through the whole model. Every sublayer reads that vector, computes something, and adds its result back.</p>
+      <p><b>Attention</b> moves information between positions. The <b>MLP</b> (multilayer perceptron) transforms each position on its own: 16 numbers to 64, a nonlinearity called GELU, then back to 16. <b>RMSNorm</b> rescales the copy each sublayer reads, so every sublayer sees inputs of a steady size even as the stream itself grows. Watch the size column.</p>
+      <div class="formula"><math display="block"><mrow><mi>x</mi><mo>←</mo><mi>x</mi><mo>+</mo><mi>Attn</mi><mo stretchy="false">(</mo><mi>norm</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mspace width="1.2em"></mspace><mi>x</mi><mo>←</mo><mi>x</mi><mo>+</mo><mi>MLP</mi><mo stretchy="false">(</mo><mi>norm</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math></div>
+      <p>Our model stacks 2 blocks. Llama 3 70B stacks 80.</p>
+      <p class="takeaway">Blocks add to the vector instead of replacing it. That keeps information, and gradients, flowing through deep stacks.</p>
+    </div>
+    <figure class="figure" data-widget="block">
+      <div class="ctl-row block-ctl"></div>
+      <div class="block-rows"></div>
+      <div class="scale-legend"><span>−</span><span class="ramp div-ramp"></span><span>+</span><span>each row scaled to its own largest entry · size = vector length</span></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="logits" data-pass="2" data-title="Logits, softmax, sampling" data-strip="tokens ids focus:4 target:5" data-stage="vector → 113 scores"
+  data-fact="The last vector times a 16 × 113 matrix gives 113 logits; softmax turns them into probabilities. Temperature, top-k and top-p reshape them before sampling.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>8 of 14</span></p>
+      <h2 class="slide-title">The last vector becomes a score for every token</h2>
+      <p class="lede">The final 16 numbers at a position, after one last RMSNorm, are multiplied by a 16 × 113 matrix: one score, a <b>logit</b>, for each token. Softmax turns logits into probabilities by exponentiating and dividing by the total.</p>
+      <div class="formula"><math display="block"><mrow><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><msup><mi>e</mi><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>/</mo><mi>T</mi></mrow></msup><mrow><msub><mo>∑</mo><mi>j</mi></msub><msup><mi>e</mi><mrow><msub><mi>z</mi><mi>j</mi></msub><mo>/</mo><mi>T</mi></mrow></msup></mrow></mfrac></mrow></math></div>
+      <p>Decoding settings act here. <b>Temperature</b> T divides the logits. <b>Top-k</b> keeps the k most likely tokens. <b>Top-p</b> keeps the smallest set of top tokens whose probabilities add up to at least p. Everything else gets probability 0, and the kept tokens are rescaled to sum to 1.</p>
+      <p class="takeaway">Logits are scores, softmax makes them probabilities, and temperature, top-k and top-p reshape them before a token is drawn.</p>
+    </div>
+    <figure class="figure" data-widget="logits">
+      <div class="fig-head"><span class="fig-title">At <code>WHERE</code>: top 8 of 113</span><span class="fig-sub">left: logits · right: probabilities after your settings</span></div>
+      <div class="lg-table"></div>
+      <div class="ctl-row lg-ctl"></div>
+      <p class="lg-note fig-cap" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="loss" data-pass="2" data-title="The loss floor" data-strip="tokens ids" data-stage="loss per position"
+  data-fact="The data's entropy, averaged over the data, is <b>0.6937</b> nats per token. Our model's loss is <b>0.6942</b>. After <code>=</code> the floor is ln 9 = 2.197.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>9 of 14</span></p>
+      <h2 class="slide-title">The loss has a floor, and it isn't zero</h2>
+      <p class="lede">After <code>=</code>, all nine digits are equally likely in the data. Probabilities must sum to 1, so a model can't give every digit more than 1/9. Averaged over the data, the loss after <code>=</code> can't drop below ln 9 = 2.197.</p>
+      <p>That floor is the <b>entropy</b> of the data. For our grammar we can compute it exactly at every position. Averaged over the data, with each of the 270 queries weighted by how often it occurs, it is <span class="num" data-check="floor">0.6937</span>. Our trained model reaches <span class="num" data-check="exact:final">0.6942</span>.</p>
+      <p><b>Perplexity</b> is <i>e</i> raised to the loss. A perplexity of 9 after <code>=</code> means the model is choosing among 9 equally likely options, which is exactly the situation.</p>
+      <p>On a single query a model can land on either side of the ideal value. Only the average over the data has a floor. Loss is measured in <b>nats</b> because it uses the natural logarithm.</p>
+      <p class="takeaway">The floor is the data's own uncertainty. The gap between the loss and the floor is what the model still has to learn. Scaling laws call this floor the irreducible loss.</p>
+    </div>
+    <figure class="figure" data-widget="loss">
+      <div class="fig-head"><span class="fig-title">Loss at each position</span><span class="loss-toggle"></span></div>
+      <div class="loss-chart"></div>
+      <div class="legend loss-legend"></div>
+      <div class="stat-row loss-stats"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="gradient" data-pass="2" data-title="Gradients" data-strip="tokens ids focus:4 target:5" data-stage="one prediction, 4 scores"
+  data-fact="For softmax + cross-entropy, the gradient of the loss with respect to each logit is <b>p − y</b>.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>10 of 14</span></p>
+      <h2 class="slide-title">The gradient says which way to move each number</h2>
+      <p class="lede">For softmax followed by cross-entropy, the gradient of the loss with respect to each logit is simply p − y: the predicted probability, minus 1 for the true token and minus 0 for all others.</p>
+      <div class="formula"><math display="block"><mrow><mfrac><mrow><mo>∂</mo><mi>loss</mi></mrow><mrow><mo>∂</mo><msub><mi>z</mi><mi>i</mi></msub></mrow></mfrac><mo>=</mo><msub><mi>p</mi><mi>i</mi></msub><mo>−</mo><msub><mi>y</mi><mi>i</mi></msub></mrow></math></div>
+      <p>Gradient descent subtracts learning rate × gradient. So each step raises the true token's logit by lr × (1 − p) and lowers every other logit by lr × that token's own p.</p>
+      <p>Here we run that update by hand on four logits: the scores for <code>id</code>, <code>name</code>, <code>email</code> and <code>age</code> after <code>…users WHERE</code>. Each step draws the true next token from the real data, where <code>name</code> never occurs. With a small learning rate the probabilities settle near 1/3, 0, 1/3, 1/3. With a large one they chase whichever token was drawn last.</p>
+      <p class="takeaway">Gradient descent: compute the gradient, take a small step against it, repeat.</p>
+    </div>
+    <figure class="figure" data-widget="gradient">
+      <div class="gd-bars"></div>
+      <div class="gd-last note-inline" aria-live="polite"></div>
+      <div class="ctl-row gd-ctl"></div>
+      <div class="gd-chart"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="backprop" data-pass="2" data-title="Backpropagation" data-strip="tokens ids focus:4 target:5" data-stage="forward, then backward"
+  data-fact="Backpropagation applies the chain rule backwards through the recorded computation. Forward + backward costs about 3× a forward pass.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>11 of 14</span></p>
+      <h2 class="slide-title">Backpropagation: the chain rule, run backwards</h2>
+      <p class="lede">The gradient of a logit is easy. A parameter deep inside the model affects the loss through a chain of operations, and its gradient adds up, over every path from the parameter to the loss, the product of the local derivatives along that path.</p>
+      <p>Frameworks record every operation of the forward pass. The backward pass visits them in reverse order, multiplying by each local derivative. One forward and one backward pass yield the gradient of all <span class="num" data-check="params">9,968</span> parameters.</p>
+      <p>The backward pass costs about twice the forward pass, so a training step costs about 3× a forward pass. That factor is where the 6 in “6 × parameters × tokens” comes from (Pass 3).</p>
+      <p class="takeaway">Autograd turns any differentiable computation into gradients for every parameter, at about three times the cost of just running it.</p>
+    </div>
+    <figure class="figure dots" data-widget="backprop">
+      <div class="ctl-row bp-ctl"></div>
+      <div class="bp-graph"></div>
+      <p class="bp-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="optim" data-pass="2" data-title="Optimizers" data-strip="tokens ids" data-stage="9,968 parameters"
+  data-fact="Training used Adam (AdamW with weight decay 0): learning rate 0.01, β₁ = 0.9, β₂ = 0.95, 100 warmup steps, cosine decay to 0.001, batches of 128 queries, 6,000 steps.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>12 of 14</span></p>
+      <h2 class="slide-title">Optimizers decide how big each step is</h2>
+      <p class="lede">Plain gradient descent (SGD) uses one learning rate for every parameter. The steepest direction caps that rate: on this bowl, above 0.08 the steep coordinate blows up. At 0.07 the flat coordinate closes only 7% of its remaining distance per step.</p>
+      <p><b>Adam</b> divides each parameter's step by a running estimate of that parameter's gradient size. Steep and flat coordinates move at a similar pace; from this start, equally far along both axes, its path runs along the diagonal. It also averages recent gradients (momentum). <b>AdamW</b> applies weight decay as a separate step.</p>
+      <p>Our model trained with Adam: peak rate 0.01, β₁ = 0.9, β₂ = 0.95 (how quickly its two running averages forget). It used PyTorch's AdamW with weight decay 0, which is the same thing. The rate <b>warms up</b> over 100 steps, because the first updates rely on statistics from only a few batches. Then it <b>decays</b>: mini-batch gradients are noisy, and a smaller rate late in training lets the loss settle lower.</p>
+      <p class="takeaway">Adam adapts each parameter's step size to its own gradient history. Adam(W) with warmup and decay is the standard recipe for training transformers.</p>
+    </div>
+    <figure class="figure" data-widget="optim">
+      <div class="fig-head"><span class="fig-title">SGD and Adam on the same loss surface</span><span class="fig-sub">loss = ½(25a² + b²)</span></div>
+      <div class="opt-plot"></div>
+      <div class="ctl-row opt-ctl"></div>
+      <div class="fig-head"><span class="fig-title">Our learning-rate schedule</span><span class="fig-sub">Adam, 6,000 steps</span></div>
+      <div class="opt-lr"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="train" data-pass="2" data-title="Watch it learn" data-strip="tokens ids" data-stage="training, step by step"
+  data-fact="The fixed tokens are learned by step ~100, the table after <code>FROM</code> by step ~150, and the column after <code>WHERE</code> converges last.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>13 of 14</span></p>
+      <h2 class="slide-title">Watch the model learn</h2>
+      <p class="lede">These are the real training curves of our model. Drag through training and the whole model, weights and all, is swapped for its saved state at that step.</p>
+      <p>The fixed tokens (<code>FROM</code>, <code>WHERE</code>, <code>=</code>, <code>;</code>) cost almost nothing by step 100. The table after <code>FROM</code> follows by step 150, once a head learns to look back at the selected column. The column after <code>WHERE</code> needs two lookups and converges last.</p>
+      <p>Each card tracks one position, averaged over the data. Four never reach zero because the data itself is uncertain there: the first column, the table (after <code>id</code>, any of three tables can follow), the filter column, and the value. Their floors measure that uncertainty.</p>
+      <p class="takeaway">Simple rules are learned first. Rules that need attention to the right earlier token come later.</p>
+    </div>
+    <figure class="figure" data-widget="train">
+      <div class="tr-chart"></div>
+      <div class="legend tr-legend"><span class="key"><span class="sw" style="background:var(--ink-3)"></span>loss per batch (mean of 10 steps)</span><span class="key"><span class="sw" style="background:var(--accent)"></span>exact loss, averaged over the data</span><span class="key"><span class="sw sw-floor"></span>floor</span></div>
+      <div class="ctl-row tr-ctl"></div>
+      <div class="tr-grid"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="heldout" data-pass="2" data-title="Rules or memorization?" data-strip="tokens ids" data-stage="a query the model never saw"
+  data-fact="A copy trained without 27 of the 270 queries (ours included) learned the structural rules but memorized the digits: it gives our query's <code>7</code> only 0.003, and its loss on held-out queries is 1.27 vs. 0.68 on queries it saw.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>14 of 15</span></p>
+      <h2 class="slide-title">Did it learn the rules, or memorize the data?</h2>
+      <p class="lede">Our model saw each of the 270 queries about 2,800 times. To see what it really learned, we trained a second copy with the same recipe on only 243 of them. The other 27, including our query, were held out: it never saw them.</p>
+      <p>On the held-out queries it still gets the structure right: the table after the column, the filter column after the table. Those are rules, and rules carry over to new queries.</p>
+      <p>The digit is different. In its training data our query's start was followed by every digit except 7, and the model learned exactly that: it gives <code>7</code> a probability of <span class="num" data-check="hold:p7">0.003</span>. Its loss after <code>=</code> on held-out queries is <span class="num" data-check="hold:held6">6.76</span>, against ln 9 = 2.20 for a model that knows digits are random.</p>
+      <p>On the queries it did see, its loss after <code>=</code> is <span class="num" data-check="hold:seen6">2.10</span>, below the true floor of 2.197. Beating the floor is the signature of memorization: the model is fitting its particular sample, not the language. Only held-out data shows it.</p>
+      <p class="aside">Real models are judged the same way: on held-out text and on benchmarks they never trained on. When benchmark questions leak into the training data, a problem called contamination, the scores overstate the model.</p>
+      <p class="takeaway">Training loss can't tell learning from memorizing. Loss on held-out data can.</p>
+    </div>
+    <figure class="figure" data-widget="heldout">
+      <div class="fig-head"><span class="fig-title">Our query, under both models</span><span class="fig-sub">probability of each true next token</span></div>
+      <div class="ho-table"></div>
+      <div class="fig-head"><span class="fig-title">Second model: loss by position</span><span class="fig-sub">held-out vs. seen queries, averaged over the data</span></div>
+      <div class="ho-chart"></div>
+      <div class="stat-row ho-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="real" data-pass="2" data-title="Our model vs. real ones" data-strip="tokens ids" data-stage="9,968 parameters"
+  data-fact="Llama 3.1 405B has about 40 million times our parameters and was trained on about 2.5 million times as many tokens.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 2 · Inside the model</span><span>14 of 14</span></p>
+      <h2 class="slide-title">Same recipe, scaled up</h2>
+      <p class="lede">Production models use the same parts: token and position information, attention, MLPs, residual stream, softmax over a vocabulary. They have far more of each, plus a few upgrades.</p>
+      <ul>
+        <li><b>RoPE</b> encodes position by rotating q and k, instead of adding a position vector.</li>
+        <li><b>SwiGLU</b> MLPs use a gated activation in place of GELU.</li>
+        <li><b>Grouped-query attention</b> lets many query heads share a few key/value heads: Llama 3 70B has 64 query heads but 8 KV heads.</li>
+        <li><b>Mixture of experts</b> routes each token to a few of many MLPs: DeepSeek-V3 has 671B parameters, 37B active per token.</li>
+      </ul>
+      <p class="takeaway">Going from ten thousand to hundreds of billions of parameters is mostly more layers, wider vectors, more heads, and far more data.</p>
+    </div>
+    <figure class="figure" data-widget="real">
+      <div class="fig-head"><span class="fig-title">Configurations</span><span class="fig-sub">Llama 3.1 numbers from Meta's paper</span></div>
+      <div class="scroll-x"><table class="cmp-table"></table></div>
+      <div class="ctl-row real-ctl"></div>
+      <div class="real-bars"></div>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== PASS 3 -->
+<section class="slide opener" id="p3" data-pass="3" data-title="Pass 3: the same recipe, 40 million times larger" data-strip="tokens ids" data-stage="1 of 768,000 training queries">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>overview</span></p>
+      <h2 class="slide-title">Pass 3: the same recipe, 40 million times larger</h2>
+      <p class="lede">We know every step of our 9,968-parameter model. A 405-billion-parameter model runs the same steps. What changes is how much work there is, where it runs, and what breaks along the way.</p>
+      <p class="aside">This pass is about compute, memory, communication and reliability.</p>
+    </div>
+    <figure class="figure" data-widget="opener">
+      <div class="fig-head"><span class="fig-title">What we know about our query so far</span></div>
+      <ul class="op-facts"></ul>
+      <div class="fig-head"><span class="fig-title">In this pass</span></div>
+      <ol class="op-slides"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="flops" data-pass="3" data-title="Counting the work" data-strip="tokens ids" data-stage="1 of 768,000 training queries"
+  data-fact="Training compute ≈ 6 × parameters × tokens. Ours: 3.7 × 10¹¹ FLOPs. Llama 3.1 405B: 3.8 × 10²⁵ FLOPs, about 68 days on 16,384 H100s at 40% utilization.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>1 of 13</span></p>
+      <h2 class="slide-title">Counting the work: 6&nbsp;×&nbsp;parameters&nbsp;×&nbsp;tokens</h2>
+      <p class="lede">A forward pass does about 2 floating-point operations per parameter per token: one multiply and one add. The backward pass costs about twice as much. So training costs about 6 FLOPs per parameter per token.</p>
+      <div class="formula"><math display="block"><mrow><mi>C</mi><mo>≈</mo><mn>6</mn><mo>·</mo><mi>N</mi><mo>·</mo><mi>D</mi></mrow></math><span class="cap">C: training FLOPs · N: parameters · D: training tokens</span></div>
+      <p>Our model: 6 × 9,968 × 6,144,000 ≈ 3.7 × 10¹¹ FLOPs, a few seconds of laptop time. Llama 3.1 405B: 6 × 405 × 10⁹ × 15.6 × 10¹² ≈ 3.8 × 10²⁵ FLOPs, the figure Meta reports.</p>
+      <p>Dividing by what the hardware sustains gives time. An H100 peaks at 989 TFLOP/s in dense BF16. Large runs sustain about 40% of peak, a ratio called <b>model FLOPs utilization</b> (MFU).</p>
+      <p class="aside">6ND leaves out attention's own work over the context: about 4% extra for the 405B model at 8,192 tokens, far more at 128K.</p>
+      <p class="takeaway">Training compute is predictable from parameters and tokens. Utilization decides how long it takes.</p>
+    </div>
+    <figure class="figure" data-widget="flops">
+      <div class="ctl-row fl-presets"></div>
+      <div class="ctl-row fl-ctl"></div>
+      <div class="stat-row fl-out"></div>
+      <p class="fl-note fig-cap" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="scaling" data-pass="3" data-title="Scaling laws" data-strip="tokens ids" data-stage="1 of 768,000 training queries"
+  data-fact="Compute-optimal training uses about 20 tokens per parameter (Chinchilla: 70B on 1.4T). Llama 3.1 8B used ~15T tokens, about 1,900 per parameter, to be cheap to serve.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>2 of 13</span></p>
+      <h2 class="slide-title">Scaling laws: how big, and for how long</h2>
+      <p class="lede">For a fixed budget C ≈ 6ND you can train a bigger model on fewer tokens, or a smaller one on more. Loss falls as a smooth power law in both, so the best split can be predicted from small experiments.</p>
+      <p>DeepMind's Chinchilla study found the compute-optimal split is roughly <b>20 tokens per parameter</b>. Chinchilla itself is 70B parameters trained on 1.4T tokens. Meta's own fits for Llama 3 favored more data: 402B parameters on 16.55T tokens for 3.8 × 10²⁵ FLOPs, about 41 tokens per parameter. They trained 405B on 15.6T. The best ratio depends on the data and the fitting method; 20 is a rule of thumb.</p>
+      <p>Smaller models are often trained far past that point. Llama 3.1 8B saw about 15T tokens, roughly 1,900 per parameter, because a smaller model is cheaper to serve and serving costs are paid on every request.</p>
+      <p>Loss curves also flatten toward a floor: the irreducible part, which we computed exactly for our grammar in Pass 2.</p>
+      <p class="takeaway">Scaling laws turn “how big should the model be?” into arithmetic. Small models are deliberately over-trained to make inference cheap.</p>
+    </div>
+    <figure class="figure" data-widget="scaling">
+      <div class="fig-head"><span class="fig-title">Parameters vs. training tokens</span><span class="fig-sub">both axes logarithmic</span></div>
+      <div class="sc-chart"></div>
+      <div class="ctl-row sc-ctl"></div>
+      <p class="sc-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="data" data-pass="3" data-title="Pretraining data" data-strip="tokens ids" data-stage="1 of 768,000 training queries"
+  data-fact="Our 2,000-query tokenizer corpus contains only <b>269</b> distinct queries. Near-duplicate detection at web scale uses MinHash.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>3 of 13</span></p>
+      <h2 class="slide-title">Pretraining data: most of the work is cleaning</h2>
+      <p class="lede">Real pretraining corpora start as web crawls: billions of HTML pages. A pipeline turns them into tokens. It extracts the text, identifies the language, filters for quality and safety, removes duplicates and personal data, mixes sources, tokenizes, and shards.</p>
+      <p>Duplicates waste compute and are more likely to be memorized. Exact copies are caught by hashing. Near-copies need a similarity measure. <b>MinHash</b> compresses each document's set of word sequences into a short signature whose overlap estimates their Jaccard similarity: shared sequences divided by all distinct sequences. <b>Locality-sensitive hashing</b> then buckets the signatures so that only documents in the same bucket get compared.</p>
+      <p>Our own corpus is almost all duplicates: the 2,000 queries used to build the tokenizer contain only 269 distinct ones.</p>
+      <p class="takeaway">Data quality is engineered. Filtering and deduplicating trillions of tokens is a large data-infrastructure problem.</p>
+    </div>
+    <figure class="figure" data-widget="data">
+      <div class="pipe" aria-label="Pretraining data pipeline"></div>
+      <div class="fig-head"><span class="fig-title">MinHash on two small query logs</span><span class="fig-sub">edit either one</span></div>
+      <div class="mh-docs"></div>
+      <div class="ctl-row mh-ctl"></div>
+      <div class="mh-sig"></div>
+      <div class="stat-row mh-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="memory" data-pass="3" data-title="Why big models don't fit" data-strip="tokens ids" data-stage="9,968 parameters × 16 bytes"
+  data-fact="Mixed-precision Adam keeps ~16 bytes per parameter: 70B parameters need ~1.12 TB of model state, versus 80 GB on one H100.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>4 of 13</span></p>
+      <h2 class="slide-title">Why a 70B model doesn't fit on one GPU</h2>
+      <p class="lede">Training with Adam in mixed precision keeps about 16 bytes per parameter: the BF16 weights (2) and gradients (2), plus, in FP32, a master copy of the weights (4) and Adam's two running averages (4 + 4).</p>
+      <p>For 70B parameters that is 1.12 TB before a single activation is stored. One H100 holds 80 GB. Even the BF16 weights alone, 140 GB, don't fit.</p>
+      <p><b>Activations</b>, the intermediate values kept for the backward pass, add more and grow with batch size and sequence length. They can be cut by recomputing them during the backward pass, which is called activation checkpointing.</p>
+      <p class="aside">Recipes vary: Llama 3 accumulates and reduce-scatters gradients in FP32, which adds 2 bytes per parameter. Our model trains in FP32: 4 bytes each for weights, gradients and both Adam averages. That is also 16 bytes per parameter, 159 KB in total.</p>
+      <p class="takeaway">Model state alone needs about 16 bytes per parameter, so large models must be split across GPUs. The next slides show how.</p>
+    </div>
+    <figure class="figure" data-widget="memory">
+      <div class="ctl-row mem-ctl"></div>
+      <div class="mem-chart"></div>
+      <p class="mem-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="gpu" data-pass="3" data-title="Compute vs. memory bandwidth" data-strip="tokens ids" data-stage="matrix multiplies on a GPU"
+  data-fact="H100 SXM: 989 TFLOP/s dense BF16, 3.35 TB/s HBM. An operation needs about 295 FLOPs per byte to keep the math units busy.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>5 of 13</span></p>
+      <h2 class="slide-title">A GPU is fast at math and slower at memory</h2>
+      <p class="lede">An H100 SXM can do 989 trillion BF16 operations per second (dense) but read only 3.35 TB per second from its 80 GB of high-bandwidth memory (HBM), the GPU's main memory. That is about 295 operations for every byte read.</p>
+      <p><b>Arithmetic intensity</b> is operations per byte moved. For matrix multiplies on the tensor cores, the GPU's matrix units, an intensity below about 295 means the operation is memory-bound and the math units wait for data. Large matrix multiplies are compute-bound. Elementwise operations such as additions, GELU and normalization run on the ordinary CUDA cores (67 TFLOP/s in FP32, a threshold near 20) and do only a few operations per byte, so they are memory-bound too.</p>
+      <p>Multiplying B token vectors by a d × d BF16 weight matrix does 2Bd² operations and moves about 2d² bytes of weights, so its intensity is roughly B. Generating one token at a time (B = 1) leaves most of the GPU idle.</p>
+      <p class="aside">NVIDIA's datasheet lists 1,979 TFLOP/s BF16, a figure that assumes 2:4 structured sparsity. Dense math gets half.</p>
+      <p class="takeaway">Most performance work is feeding the math units: larger batches, fused kernels, fewer trips to memory.</p>
+    </div>
+    <figure class="figure" data-widget="gpu">
+      <div class="fig-head"><span class="fig-title">Roofline of an H100 SXM</span><span class="fig-sub">attainable TFLOP/s vs. FLOPs per byte</span></div>
+      <div class="rf-chart"></div>
+      <div class="ctl-row rf-ctl"></div>
+      <p class="rf-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="flash" data-pass="3" data-title="FlashAttention" data-strip="tokens ids focus:4" data-stage="attention, tiled"
+  data-fact="FlashAttention computes exact attention in tiles with an online softmax, never storing the n × n score matrix in GPU memory.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>6 of 13</span></p>
+      <h2 class="slide-title">FlashAttention: the same math, fewer trips to memory</h2>
+      <p class="lede">Standard attention writes the full n × n score matrix to GPU memory, reads it back for the softmax, writes the weights, then reads them again. At 8,192 tokens that is 67 million scores per head, 128 MiB in BF16, moving through HBM several times.</p>
+      <p>FlashAttention processes keys and values in tiles small enough for fast on-chip memory and never stores the score matrix. The key step is an <b>online softmax</b>: keep a running maximum m, a running sum ℓ and a running output o, and rescale them whenever a new tile raises the maximum.</p>
+      <p>Step through it on our model's real scores: layer 1, head 2, asking from <code>WHERE</code>, keys in tiles of 2. The result matches the full softmax exactly.</p>
+      <p class="takeaway">FlashAttention is exact attention. It is faster because it moves less data, not because it does less math.</p>
+    </div>
+    <figure class="figure" data-widget="flash">
+      <div class="ctl-row fa-ctl"></div>
+      <div class="fa-scores"></div>
+      <div class="fa-state"></div>
+      <p class="fa-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="precision" data-pass="3" data-title="Number formats" data-strip="tokens ids" data-stage="numbers in 32, 16 and 8 bits"
+  data-fact="BF16 has FP32's range with 8 bits of precision; FP16 overflows past 65,504; FP8 E4M3 tops out at 448 and needs scale factors.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>7 of 13</span></p>
+      <h2 class="slide-title">Fewer bits per number: FP32, BF16, FP16, FP8</h2>
+      <p class="lede">A floating-point number spends its bits on a sign, an exponent, which sets the range, and a mantissa, which sets the precision. Smaller formats halve or quarter memory and traffic, and the GPU's matrix units (tensor cores) run faster on them.</p>
+      <p><b>BF16</b> keeps FP32's 8 exponent bits: same range, less precision. It rarely overflows, which made it the default for training. <b>FP16</b> has more precision but far less range, so training in it needs loss scaling to keep small gradients from rounding to zero. <b>FP8</b> needs a scale factor per tensor or per block.</p>
+      <p>Try a value from our model, a tiny gradient, or a large activation.</p>
+      <p class="takeaway">Precision is a budget. Spend bits on range or on detail, and add scaling where the budget runs out.</p>
+    </div>
+    <figure class="figure" data-widget="precision">
+      <div class="ctl-row fp-ctl"></div>
+      <div class="fp-rows"></div>
+      <div class="legend"><span class="key"><span class="sw" style="background:var(--s5)"></span>sign</span><span class="key"><span class="sw" style="background:var(--s1)"></span>exponent</span><span class="key"><span class="sw" style="background:var(--s3)"></span>mantissa</span></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="allreduce" data-pass="3" data-title="Data parallelism and all-reduce" data-strip="tokens ids" data-stage="one query per GPU"
+  data-fact="Ring all-reduce: each GPU sends 2(N − 1)/N × the gradient size. Our gradient is 39.9 KB per step; Llama 3 8B's is 16 GB in BF16, or 32 GB in FP32, the precision Llama 3 reduces them in.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>8 of 13</span></p>
+      <h2 class="slide-title">Data parallelism: different queries per GPU, one shared update</h2>
+      <p class="lede">Give each of N GPUs a full copy of the model and a different slice of the batch. Each computes gradients on its own queries. Before the update, an <b>all-reduce</b> adds up the gradients from all GPUs and every copy divides by N, so all copies take the same averaged step.</p>
+      <p><b>Ring all-reduce</b> splits the gradient into N chunks. For N − 1 steps each GPU sends a chunk to its neighbor and adds the chunk it receives (reduce-scatter). For N − 1 more steps the finished chunks travel around the ring (all-gather). Each GPU sends 2(N − 1)/N times the gradient size, almost independent of N.</p>
+      <div class="formula"><math display="block"><mrow><mi>T</mi><mo>≈</mo><mn>2</mn><mo stretchy="false">(</mo><mi>N</mi><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mi>α</mi><mo>+</mo><mfrac><mrow><mn>2</mn><mo stretchy="false">(</mo><mi>N</mi><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><mi>N</mi></mfrac><mo>·</mo><mfrac><mi>S</mi><mi>β</mi></mfrac></mrow></math><span class="cap">α: per-step latency · S: gradient bytes · β: link bandwidth</span></div>
+      <p>The ring pays latency 2(N − 1) times. Tree and recursive-doubling algorithms need only about 2 log₂N latency steps, so communication libraries such as NVIDIA's NCCL pick algorithms by message size and topology.</p>
+      <p class="takeaway">Data parallelism scales because ring all-reduce traffic per GPU stays near twice the gradient size however many GPUs join. What grows with N is the latency term, and beyond one server the links are slower.</p>
+    </div>
+    <figure class="figure" data-widget="allreduce">
+      <div class="ctl-row ar-ctl"></div>
+      <div class="ar-ring"></div>
+      <p class="ar-note note-inline" aria-live="polite"></p>
+      <div class="fig-head"><span class="fig-title">How long one all-reduce takes</span><span class="fig-sub">ring algorithm, α–β model</span></div>
+      <div class="ctl-row ar-calc"></div>
+      <div class="stat-row ar-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="zero" data-pass="3" data-title="ZeRO and FSDP" data-strip="tokens ids" data-stage="model state, sharded"
+  data-fact="Fully sharded data parallelism (ZeRO stage 3 / FSDP) stores 16Ψ/N bytes per GPU: 70B parameters over 64 GPUs is 17.5 GB each.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>9 of 13</span></p>
+      <h2 class="slide-title">Sharding the model state: ZeRO and FSDP</h2>
+      <p class="lede">Plain data parallelism keeps all 16 bytes per parameter on every GPU. <b>ZeRO</b> removes that redundancy in stages: shard the optimizer state across the N data-parallel GPUs (stage 1), then the gradients (stage 2), then the weights themselves (stage 3, which PyTorch calls <b>FSDP</b>).</p>
+      <p>Stage 3 gathers each layer's weights just before using them and frees them afterwards. Gradients are reduce-scattered instead of all-reduced. The ZeRO paper puts the communication at 1.5× that of plain data parallelism, in exchange for an N-fold cut in memory.</p>
+      <p class="takeaway">With full sharding, 70B parameters of model state fit on 64 GPUs at 17.5 GB each.</p>
+    </div>
+    <figure class="figure" data-widget="zero">
+      <div class="ctl-row z-ctl"></div>
+      <div class="z-chart"></div>
+      <div class="formula z-formula"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="tp" data-pass="3" data-title="Tensor parallelism" data-strip="tokens ids focus:4" data-stage="one layer, two GPUs"
+  data-fact="Tensor parallelism splits each layer's matrices across GPUs; our MLP split in two gives partial results that sum to the single-GPU output, up to floating-point rounding.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>10 of 13</span></p>
+      <h2 class="slide-title">Tensor parallelism: split every matrix</h2>
+      <p class="lede">When one layer is too big or too slow for one GPU, split its matrices. NVIDIA's Megatron-LM training library splits the MLP's first matrix by columns and the second by rows. Each GPU computes a share of the hidden units and a partial output, and one all-reduce adds the partial outputs.</p>
+      <p>Below, our model's real layer-1 MLP at <code>WHERE</code> runs on two or four simulated GPUs. Their partial results add up to the single-GPU output, to rounding error.</p>
+      <p>Attention is split the same way, by heads: each GPU runs some of the heads and multiplies by its rows of W<sub>O</sub>, and a second all-reduce sums the results.</p>
+      <p>This costs two all-reduces per layer in the forward pass and two in the backward pass, so tensor parallelism stays inside one server, where H100s are connected by NVLink at 900 GB/s (450 GB/s in each direction).</p>
+      <p class="takeaway">Tensor parallelism splits each layer across GPUs and pays with frequent communication, so it runs on the fastest links.</p>
+    </div>
+    <figure class="figure" data-widget="tp">
+      <div class="ctl-row tp-ctl"></div>
+      <div class="tp-diagram"></div>
+      <div class="tp-rows"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="pp" data-pass="3" data-title="Pipeline parallelism" data-strip="tokens ids" data-stage="micro-batches of queries"
+  data-fact="Pipeline bubble: with p stages and m micro-batches, (p − 1)/(m + p − 1) of the pipeline's time is idle. 1F1B keeps the bubble but stores fewer activations.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>11 of 13</span></p>
+      <h2 class="slide-title">Pipeline parallelism: split the layers, mind the bubble</h2>
+      <p class="lede">Pipeline parallelism gives each GPU a contiguous range of layers. The batch is cut into micro-batches: stage 1 starts micro-batch 2 while stage 2 is still working on micro-batch 1.</p>
+      <p>At the start and end of each batch some stages sit idle: the <b>bubble</b>. With p stages and m micro-batches, the idle share of the pipeline's time is (p − 1)/(m + p − 1). Megatron-LM writes the same overhead as (p − 1)/m of the ideal compute time.</p>
+      <p>The <b>1F1B</b> schedule alternates one forward and one backward per micro-batch once the pipeline is full. The bubble is the same, but each stage holds activations for at most p micro-batches instead of m.</p>
+      <p class="takeaway">Pipelines cut per-GPU memory by layers and communicate only between neighboring stages. More micro-batches shrink the bubble.</p>
+    </div>
+    <figure class="figure" data-widget="pp">
+      <div class="ctl-row pp-ctl"></div>
+      <div class="pp-grid scroll-x"></div>
+      <div class="stat-row pp-out"></div>
+      <p class="fig-cap">Forward and backward steps are drawn the same length for clarity; real backward passes take about twice as long.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="moe" data-pass="3" data-title="Mixture of experts" data-strip="tokens ids" data-stage="tokens routed to experts"
+  data-fact="Mixture of experts: a router sends each token to its top-k expert MLPs. DeepSeek-V3 has 671B parameters but uses 37B per token; experts on different GPUs need two all-to-all exchanges per layer.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>12 of 14</span></p>
+      <h2 class="slide-title">Mixture of experts: more parameters, same work per token</h2>
+      <p class="lede">A mixture-of-experts (MoE) layer replaces one MLP with many expert MLPs and a small router. For each token, the router scores the experts and sends the token to its top k. Parameters grow with the number of experts; the work per token grows only with k. DeepSeek-V3 has 671B parameters, of which 37B are used for each token.</p>
+      <p>In large runs, experts live on different GPUs: <b>expert parallelism</b>. Every MoE layer then needs two <b>all-to-all</b> exchanges: one sends each token to its experts' GPUs, the other brings the results back.</p>
+      <p>If the router favors a few experts, their GPUs become the bottleneck while the others wait. Some systems cap how many tokens an expert accepts per batch and drop the overflow. Training also pushes the router toward balance, with an extra loss term or with per-expert bias terms adjusted during training, which DeepSeek-V3 relies on.</p>
+      <p class="takeaway">MoE buys parameters without more work per token, and pays in all-to-all traffic and load balancing.</p>
+    </div>
+    <figure class="figure" data-widget="moe">
+      <div class="ctl-row moe-ctl"></div>
+      <div class="moe-view"></div>
+      <div class="stat-row moe-out"></div>
+      <p class="fig-cap">A toy router on 4 queries (32 tokens), one query per GPU, with 8 experts on 4 GPUs. Our model has no experts; this only shows the mechanics.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="mesh" data-pass="3" data-title="4D parallelism at scale" data-strip="tokens ids" data-stage="16,384 GPUs, one model"
+  data-fact="Llama 3.1 405B: TP 8 × PP 16 × DP 128 = 16,384 H100s at 41% MFU (400 TFLOP/s per GPU).">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>12 of 13</span></p>
+      <h2 class="slide-title">All together: Llama 3.1 405B on 16,384 GPUs</h2>
+      <p class="lede">Real runs combine these methods. Meta trained Llama 3.1 405B (described in its paper The Llama 3 Herd of Models) with tensor parallelism of 8 inside each server, pipeline parallelism of 16 across servers, and fully sharded data parallelism of 128 across pipelines: 8 × 16 × 128 = 16,384 GPUs.</p>
+      <p>The layout puts the most frequent communication on the fastest links: tensor parallelism on NVLink inside a server, pipeline traffic between neighboring stages, and data-parallel gradient reduction across the whole cluster. For 128K-token sequences they added context parallelism of 16.</p>
+      <p>Meta reports 400 TFLOP/s per GPU at this scale, 41% MFU; 43% on 8,192 GPUs; and 38% during long-context training.</p>
+      <p class="takeaway">At scale, the parallelism layout is chosen so the most frequent communication uses the fastest links.</p>
+    </div>
+    <figure class="figure dots" data-widget="mesh">
+      <div class="mesh-view"></div>
+      <p class="mesh-read note-inline" aria-live="polite"></p>
+      <div class="scroll-x"><table class="cmp-table mesh-table"></table></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="failures" data-pass="3" data-title="Failures and checkpoints" data-strip="tokens ids" data-stage="training, interrupted"
+  data-fact="Llama 3.1 405B pretraining: 466 interruptions in 54 days (419 unexpected, ~78% confirmed or suspected hardware), yet over 90% effective training time.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 3 · Training at scale</span><span>13 of 13</span></p>
+      <h2 class="slide-title">At this scale, something is always failing</h2>
+      <p class="lede">Over a 54-day stretch of the Llama 3.1 405B pretraining run, Meta counted 466 job interruptions: 47 planned and 419 unexpected. About 78% of the unexpected ones were attributed to confirmed or suspected hardware issues. The run still achieved over 90% effective training time.</p>
+      <p>That is one unexpected stop about every 3 hours. Each stop loses the work done since the last checkpoint, plus restart time. Checkpointing too often wastes time writing; too rarely wastes time redoing work.</p>
+      <p>A classic first-order rule (Young, 1974): checkpoint every √(2 × C × M), where C is the time to write a checkpoint and M is the mean time between failures.</p>
+      <p class="takeaway">Reliability is part of training. Fast checkpoints, quick failure detection and automatic restarts are worth whole percentage points of a huge cluster.</p>
+    </div>
+    <figure class="figure" data-widget="failures">
+      <div class="ctl-row fx-ctl"></div>
+      <div class="fx-chart"></div>
+      <div class="stat-row fx-out"></div>
+      <p class="fig-cap">Wasted time ≈ C/T + (T/2 + R)/M for checkpoint interval T and restart time R. C and R are adjustable assumptions, not Meta's figures.</p>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== PASS 4 -->
+<section class="slide opener" id="p4" data-pass="4" data-title="Pass 4: answering requests" data-strip="tokens ids" data-stage="a trained model">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>overview</span></p>
+      <h2 class="slide-title">Pass 4: answering requests</h2>
+      <p class="lede">Training is done. Now our query arrives as a request from a user, together with thousands of others, and the model has to answer quickly and cheaply.</p>
+      <p class="aside">Serving has different bottlenecks from training. Most of this pass is about memory bandwidth.</p>
+    </div>
+    <figure class="figure" data-widget="opener">
+      <div class="fig-head"><span class="fig-title">What we know about our query so far</span></div>
+      <ul class="op-facts"></ul>
+      <div class="fig-head"><span class="fig-title">In this pass</span></div>
+      <ol class="op-slides"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="prefill" data-pass="4" data-title="Prefill and decode" data-strip="tokens ids prefix:3" data-stage="a request: prompt of 3 tokens"
+  data-fact="Serving runs a prefill pass over the whole prompt, then one decode pass per new token. Llama 3.1 70B on 8 H100s: at least 5.2 ms per decode step.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>1 of 9</span></p>
+      <h2 class="slide-title">A request arrives: prefill, then decode</h2>
+      <p class="lede">A user sends the prompt <code>SELECT name FROM</code>. The server first runs the model once over all 3 prompt tokens together. This <b>prefill</b> produces the first new token. Then it <b>decodes</b>: one forward pass per additional token, each feeding in only the newest token.</p>
+      <p>With a prompt of hundreds of tokens or more, prefill processes many tokens per pass and is compute-bound; our 3-token prompt is too short for that. Decode processes one token per request per pass, so it is limited by memory bandwidth. Users feel two numbers: <b>time to first token</b> (TTFT), mostly prefill, and <b>time per output token</b> (TPOT), set by decode.</p>
+      <p class="takeaway">Serving has two very different phases: one parallel prefill, then a sequential decode.</p>
+    </div>
+    <figure class="figure" data-widget="prefill">
+      <div class="ctl-row pf-ctl"></div>
+      <div class="pf-passes"></div>
+      <div class="fig-head"><span class="fig-title">Same request shape, Llama 3.1 70B on 8 H100s</span><span class="fig-sub">rough estimates</span></div>
+      <div class="ctl-row pf-calc"></div>
+      <div class="pf-bar"></div>
+      <div class="stat-row pf-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="kvcache" data-pass="4" data-title="The KV cache" data-strip="tokens ids prefix:3" data-stage="a request, decoding"
+  data-fact="The KV cache stores each token's keys and values once. Decoding with it gives exactly the same logits as recomputing from scratch.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>2 of 9</span></p>
+      <h2 class="slide-title">The KV cache: never recompute the past</h2>
+      <p class="lede">In every decode step, attention needs the keys and values of all earlier tokens. Those never change, because a token can't see the future. So the server computes each token's keys and values once and keeps them: the <b>KV cache</b>.</p>
+      <p>Without the cache, producing token n recomputes keys and values for all n tokens, so total work grows with n². With it, each step computes them only for the newest token.</p>
+      <p>Each row below is one token's entry: a key and a value for each of the 2 heads in each of the 2 layers, 64 numbers in all. The logits come out identical either way; the slide checks this live.</p>
+      <p class="takeaway">The KV cache trades memory for compute: no decode step recomputes the past. What still grows with the sequence is attention's reading of the cache.</p>
+    </div>
+    <figure class="figure" data-widget="kvcache">
+      <div class="ctl-row kv-ctl"></div>
+      <div class="kv-table"></div>
+      <div class="stat-row kv-out"></div>
+      <p class="kv-check note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="kvsize" data-pass="4" data-title="KV cache size" data-strip="tokens ids" data-stage="8 cached tokens × 256 bytes"
+  data-fact="KV cache per token = 2 × layers × KV heads × head dim × bytes. Ours: 256 B. Llama 3.1 70B in BF16: 320 KiB, so 2.5 GiB for an 8,192-token context.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>3 of 9</span></p>
+      <h2 class="slide-title">How big the KV cache gets</h2>
+      <div class="formula"><math display="block"><mrow><mtext>bytes per token</mtext><mo>=</mo><mn>2</mn><mo>·</mo><mi>L</mi><mo>·</mo><msub><mi>h</mi><mtext>kv</mtext></msub><mo>·</mo><msub><mi>d</mi><mtext>head</mtext></msub><mo>·</mo><mi>b</mi></mrow></math><span class="cap">2: a key and a value · L: layers · h<sub>kv</sub>: key/value heads · d<sub>head</sub>: numbers per head · b: bytes per number</span></div>
+      <p class="lede">Our model in FP32: 2 × 2 × 2 × 8 × 4 = 256 bytes per token. Llama 3.1 70B in BF16: 2 × 80 × 8 × 128 × 2 = 327,680 bytes, or 320 KiB per token. An 8,192-token conversation needs 2.5 GiB; 64 of them at once need 160 GiB.</p>
+      <p>Grouped-query attention is why that figure isn't 8× larger. If all 64 query heads kept their own keys and values, the same conversation would need 20 GiB.</p>
+      <p class="aside">KV sizes here use binary units (1 GiB = 1.074 GB); GPU memory is quoted in decimal GB.</p>
+      <p class="takeaway">KV memory grows with layers × context × users. It, more than the weights, often limits how many users a GPU can serve.</p>
+    </div>
+    <figure class="figure" data-widget="kvsize">
+      <div class="ctl-row ks-ctl"></div>
+      <div class="ks-bar"></div>
+      <div class="stat-row ks-out"></div>
+      <p class="ks-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="membound" data-pass="4" data-title="Batching decode" data-strip="tokens ids" data-stage="many requests, one step"
+  data-fact="One decode step of Llama 3.1 70B reads all 140 GB of weights. Batching shares that read across users, multiplying throughput until compute or KV reads take over.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>4 of 9</span></p>
+      <h2 class="slide-title">Decode is memory-bound, so batch it</h2>
+      <p class="lede">Each decode step reads every weight once. For Llama 3.1 70B in BF16 that is 140 GB per step. On 8 H100s reading 26.8 TB/s together, a step takes at least 5.2 ms, however little math it does.</p>
+      <p>Batching B requests lets one read of the weights serve B tokens. Until the math units become the bottleneck, the step barely slows, so total throughput grows almost B-fold while each user's speed stays the same.</p>
+      <p>Each request also reads its own KV cache every step, so long contexts eat into the gain.</p>
+      <p class="takeaway">At small batch sizes, decode speed is set by memory bandwidth. Batching is how servers turn bandwidth into throughput.</p>
+    </div>
+    <figure class="figure" data-widget="membound">
+      <div class="ctl-row mb-ctl"></div>
+      <div class="mb-charts"></div>
+      <div class="stat-row mb-out"></div>
+      <p class="fig-cap">Idealized: full memory bandwidth and peak dense BF16 compute, with time = max(bytes read / bandwidth, FLOPs / peak). Real systems reach a fraction of both.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="batching" data-pass="4" data-title="Continuous batching" data-strip="tokens ids" data-stage="10 requests, 4 slots"
+  data-fact="Continuous batching (Orca's iteration-level scheduling) admits and retires requests at every decode step instead of once per batch.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>5 of 9</span></p>
+      <h2 class="slide-title">Continuous batching: refill the batch every step</h2>
+      <p class="lede">Requests finish at different times: one query needs 2 more tokens, another 8. With <b>static batching</b>, a batch runs until its longest request finishes, and finished requests' slots sit empty.</p>
+      <p><b>Continuous batching</b> schedules at every decode step: finished requests leave and waiting ones join immediately. The Orca paper introduced this as iteration-level scheduling. vLLM, SGLang and TensorRT-LLM all work this way.</p>
+      <p>New requests also need a prefill, which competes with the decode steps of requests already running. Engines split long prompts into chunks so decode keeps moving (<b>chunked prefill</b>); disaggregation, two slides on, separates the two entirely.</p>
+      <p class="takeaway">Scheduling per step instead of per batch keeps the GPU full and cuts waiting time.</p>
+    </div>
+    <figure class="figure" data-widget="batching">
+      <div class="ctl-row cb-ctl"></div>
+      <div class="cb-grid scroll-x"></div>
+      <div class="stat-row cb-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="paged" data-pass="4" data-title="PagedAttention" data-strip="tokens ids" data-stage="KV cache in blocks of 4 tokens"
+  data-fact="PagedAttention (vLLM) stores the KV cache in fixed-size blocks with a block table per request, and lets requests share prefix blocks.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>6 of 9</span></p>
+      <h2 class="slide-title">PagedAttention: KV memory in fixed-size blocks</h2>
+      <p class="lede">Reserving one contiguous KV region per request, sized for the longest allowed output, wastes memory: most requests end early. The vLLM paper measured that existing systems used only 20–38% of their KV memory for actual tokens.</p>
+      <p>vLLM stores each request's cache in fixed-size blocks, using the same paging technique operating systems use for virtual memory, with a block table per request. Blocks are allocated as tokens arrive and freed when a request finishes. The paper reports 96% of KV memory holding actual tokens.</p>
+      <p>Blocks also make sharing easy: requests that start with the same prompt can point at the same physical blocks. That is <b>prefix caching</b>.</p>
+      <p class="takeaway">Paging the KV cache removes fragmentation and lets requests share prefixes, so more requests fit on each GPU.</p>
+    </div>
+    <figure class="figure" data-widget="paged">
+      <div class="ctl-row pg-ctl"></div>
+      <div class="pg-maps"></div>
+      <div class="stat-row pg-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="speculative" data-pass="4" data-title="Speculative decoding" data-strip="tokens ids prefix:3" data-stage="draft, then verify"
+  data-fact="Speculative decoding: with acceptance rate α and k draft tokens, one large-model pass yields (1 − α^(k+1))/(1 − α) tokens on average, with the same output distribution.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>7 of 9</span></p>
+      <h2 class="slide-title">Speculative decoding: guess ahead, verify in one pass</h2>
+      <p class="lede">Because decode is memory-bound, one pass over 5 tokens costs about as much as a pass over 1. A small <b>draft</b> model proposes k tokens. The large model scores all of them in one pass. The server keeps the longest run it accepts, plus one token from the large model itself.</p>
+      <p>Each draft token is accepted with probability min(1, p/q), where p and q are the large and draft models' probabilities for it. On a rejection, a replacement is drawn from what is left of p. This makes the output distribution exactly the large model's.</p>
+      <div class="formula"><math display="block"><mrow><mi>E</mi><mo stretchy="false">[</mo><mtext>tokens per large-model pass</mtext><mo stretchy="false">]</mo><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><msup><mi>α</mi><mrow><mi>k</mi><mo>+</mo><mn>1</mn></mrow></msup></mrow><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow></mfrac></mrow></math><span class="cap">α: chance each draft token is accepted · k: draft length</span></div>
+      <p>Below, the draft is our own model saved at training step 150, and the large model is the final one. Acceptance depends on how similar their distributions are, not on how certain: both spread the digit evenly, so 93% of drafted digits are accepted, while the still-unsure column after <code>WHERE</code> is accepted only 67% of the time.</p>
+      <p class="takeaway">Speculative decoding spends spare compute to cut the number of slow decode passes, without changing what the model outputs.</p>
+    </div>
+    <figure class="figure" data-widget="speculative">
+      <div class="ctl-row sp-ctl"></div>
+      <div class="sp-seq"></div>
+      <div class="sp-rounds"></div>
+      <div class="stat-row sp-out"></div>
+      <div class="fig-head"><span class="fig-title">Expected tokens per pass</span><span class="fig-sub">formula from Leviathan et al. (2023)</span></div>
+      <div class="ctl-row sp-calc"></div>
+      <div class="stat-row sp-calc-out"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="quant" data-pass="4" data-title="Quantization" data-strip="tokens ids" data-stage="weights in fewer bits"
+  data-fact="Per-channel quantization of our model to 8, 6 or 5 bits barely moves its loss (0.6942 → 0.6953); at 4 bits it breaks. Llama 3.1 70B: 140 GB in BF16, 70 GB in 8-bit, 35 GB in 4-bit.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>8 of 9</span></p>
+      <h2 class="slide-title">Quantization: fewer bits per weight</h2>
+      <p class="lede">Weights can be stored as 8- or 4-bit integers instead of 16-bit floats. Each group of weights gets a scale s so that its largest weight maps to the largest integer, and every weight is rounded to the nearest step.</p>
+      <div class="formula"><math display="block"><mrow><mi>q</mi><mo>=</mo><mi>round</mi><mo stretchy="false">(</mo><mi>w</mi><mo>/</mo><mi>s</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="0.6em"></mspace><mi>s</mi><mo>=</mo><mfrac><mrow><mo>max</mo><mo>|</mo><mi>w</mi><mo>|</mo></mrow><mrow><msup><mn>2</mn><mrow><mi>b</mi><mo>−</mo><mn>1</mn></mrow></msup><mo>−</mo><mn>1</mn></mrow></mfrac><mo>,</mo><mspace width="0.6em"></mspace><mi>w</mi><mo>≈</mo><mi>s</mi><mo>·</mo><mi>q</mi></mrow></math></div>
+      <p>Decode reads every weight each step, so halving the bytes nearly halves the time per token. Llama 3.1 70B weighs 140 GB in BF16, 70 GB in 8 bits, 35 GB in 4 bits.</p>
+      <p>Below, our whole model is quantized live and evaluated over all 270 queries. With one scale per output channel, 8, 6 and 5 bits barely move the loss. At 4 bits it breaks: <code>users</code> after <code>FROM</code> falls from 1.000 to 0.000.</p>
+      <p class="aside">Large models usually tolerate 4-bit weights well, using one scale per small group of weights and methods such as GPTQ, which picks roundings that minimize each layer's output error, and AWQ, which scales up the channels that matter most to the activations before rounding. A model with 16-number vectors has no slack.</p>
+      <p class="takeaway">Quantization trades a little accuracy for a lot of memory and speed. Measure the loss; don't assume it.</p>
+    </div>
+    <figure class="figure" data-widget="quant">
+      <div class="ctl-row qt-ctl"></div>
+      <div class="qt-row"></div>
+      <div class="stat-row qt-out"></div>
+      <div class="qt-bars"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="fleet" data-pass="4" data-title="Serving at scale" data-strip="tokens ids prefix:3" data-stage="a request in a fleet"
+  data-fact="Large deployments route requests to replicas, may run prefill and decode on separate GPU pools, and move the KV cache between them over the network.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 4 · Serving</span><span>9 of 9</span></p>
+      <h2 class="slide-title">Serving at scale: place work by its bottleneck</h2>
+      <p class="lede">A large deployment runs many copies of the model. A router sends each request to a replica. Inside a replica, tensor parallelism spreads each layer over the GPUs of a server.</p>
+      <p>Because prefill is compute-bound and decode is bandwidth-bound, some systems run them on separate GPU pools and ship the KV cache from one to the other over the network with RDMA, direct memory-to-memory transfers. This is <b>prefill/decode disaggregation</b>. Routers also prefer a replica that already holds a request's prefix in its cache.</p>
+      <p>Teams track <b>goodput</b>: requests per second that meet the latency targets for both time to first token and time per output token.</p>
+      <p class="takeaway">At fleet scale, serving is distributed scheduling: route, batch, cache, and place each phase where its bottleneck is cheapest.</p>
+    </div>
+    <figure class="figure dots" data-widget="fleet">
+      <div class="fl-diagram"></div>
+      <div class="ctl-row fl2-ctl"></div>
+      <p class="fl2-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== PASS 5 -->
+<section class="slide opener" id="p5" data-pass="5" data-title="Pass 5: from predictor to assistant" data-strip="tokens ids" data-stage="a text predictor">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 5 · Becoming an assistant</span><span>overview</span></p>
+      <h2 class="slide-title">Pass 5: from predictor to assistant</h2>
+      <p class="lede">Pretraining produces a model that continues text. Post-training teaches it to answer requests, to prefer better answers, and to improve on tasks whose answers can be checked.</p>
+      <p class="aside">Our tiny model only knows SQL, so it stands in for the real thing where it can.</p>
+    </div>
+    <figure class="figure" data-widget="opener">
+      <div class="fig-head"><span class="fig-title">What we know about our query so far</span></div>
+      <ul class="op-facts"></ul>
+      <div class="fig-head"><span class="fig-title">In this pass</span></div>
+      <ol class="op-slides"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="sft" data-pass="5" data-title="Supervised fine-tuning" data-strip="tokens ids" data-stage="the answer in a chat"
+  data-fact="Supervised fine-tuning uses the same next-token loss, computed only on the assistant's tokens of curated example conversations.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 5 · Becoming an assistant</span><span>1 of 4</span></p>
+      <h2 class="slide-title">Supervised fine-tuning: same loss, chosen examples</h2>
+      <p class="lede">A pretrained model continues text. To make it answer requests, it is trained further on example conversations, written by people or generated by models and filtered for quality.</p>
+      <p>Each conversation is flattened into one token sequence, with special marker tokens around each turn: the <b>chat template</b>. The loss is the same next-token cross-entropy as before, but only on the assistant's tokens. The model reads the user's message without being trained to predict it.</p>
+      <p>Below, our query as the answer to a request. Toggle the loss mask to see which tokens are trained.</p>
+      <p class="aside">The marker and English tokens here are illustrative. Our tiny model only knows SQL.</p>
+      <p class="takeaway">Fine-tuning reuses the pretraining loss on curated answers. The data teaches the behavior; the template and the loss mask let it be trained cleanly.</p>
+    </div>
+    <figure class="figure" data-widget="sft">
+      <div class="ctl-row sft-ctl"></div>
+      <div class="sft-seq"></div>
+      <p class="sft-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="prefs" data-pass="5" data-title="Preference training" data-strip="tokens ids" data-stage="one answer of two"
+  data-fact="Preference training: P(A preferred over B) = σ(r_A − r_B) for a reward model (RLHF); DPO optimizes the preference directly against a frozen reference model.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 5 · Becoming an assistant</span><span>2 of 4</span></p>
+      <h2 class="slide-title">Preference training: which answer is better?</h2>
+      <p class="lede">Many qualities are easier to compare than to write down. A labeler, or a model following written principles, sees two answers to the same prompt and picks the better one.</p>
+      <p>In <b>RLHF</b>, a reward model learns to score answers so that the preferred one scores higher: P(A preferred over B) = σ(r<sub>A</sub> − r<sub>B</sub>). The language model is then trained with reinforcement learning, sampling answers and making the high-scoring ones more likely, with a penalty for drifting far from where it started.</p>
+      <p><b>DPO</b> skips the reward model. It widens the gap between the preferred and the rejected answer, each scored relative to a frozen reference copy of the model. Below, π is the model being trained, π<sub>ref</sub> the frozen copy, and σ the logistic function 1/(1 + e<sup>−x</sup>).</p>
+      <div class="formula"><math display="block"><mrow><msub><mi>L</mi><mtext>DPO</mtext></msub><mo>=</mo><mo>−</mo><mi>log</mi><mi>σ</mi><mrow><mo>(</mo><mi>β</mi><mrow><mo>[</mo><mi>log</mi><mfrac><mrow><mi>π</mi><mo stretchy="false">(</mo><msub><mi>y</mi><mi>w</mi></msub><mo stretchy="false">)</mo></mrow><mrow><msub><mi>π</mi><mtext>ref</mtext></msub><mo stretchy="false">(</mo><msub><mi>y</mi><mi>w</mi></msub><mo stretchy="false">)</mo></mrow></mfrac><mo>−</mo><mi>log</mi><mfrac><mrow><mi>π</mi><mo stretchy="false">(</mo><msub><mi>y</mi><mi>l</mi></msub><mo stretchy="false">)</mo></mrow><mrow><msub><mi>π</mi><mtext>ref</mtext></msub><mo stretchy="false">(</mo><msub><mi>y</mi><mi>l</mi></msub><mo stretchy="false">)</mo></mrow></mfrac><mo>]</mo></mrow><mo>)</mo></mrow></mrow></math><span class="cap">y<sub>w</sub>: preferred answer · y<sub>l</sub>: rejected answer · β: strength of the pull toward the reference (larger β keeps the model closer)</span></div>
+      <p>Anthropic's <b>Constitutional AI</b> has an AI model, guided by a written set of principles, produce much of this feedback (RLAIF).</p>
+      <p class="takeaway">Preference training turns “A is better than B” into a gradient, through a reward model (RLHF) or directly (DPO).</p>
+    </div>
+    <figure class="figure" data-widget="prefs">
+      <div class="pref-pair"></div>
+      <div class="ctl-row pref-ctl"></div>
+      <div class="stat-row pref-out"></div>
+      <div class="pref-chart"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="rl" data-pass="5" data-title="RL with a verifier" data-strip="tokens ids" data-stage="answers checked by running them"
+  data-fact="With a verifier (run the SQL, compare the rows), GRPO on a two-distribution version of the task, seeded from our model, raised success on “email of user 7” from about 4% to over 90% within a few dozen updates.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 5 · Becoming an assistant</span><span>3 of 4</span></p>
+      <h2 class="slide-title">Reinforcement learning with answers you can check</h2>
+      <p class="lede">For SQL, math or code, an answer can be checked by a program. Run the query on the database: reward 1 if it returns the right rows, 0 if not. No person has to grade it.</p>
+      <p><b>GRPO</b> (from DeepSeekMath) samples a group of answers to the same prompt and gives each one the advantage (reward − group mean) / group standard deviation. Better-than-average answers become more likely under the <b>policy</b>, the model's probabilities over answers, and worse ones less likely, with no separate critic, a second network that predicts how good an answer will be.</p>
+      <p>The task: return the email of user 7. Our model continues from <code>SELECT email FROM users WHERE</code> and must pick a column and a value. Only <code>id = 7</code> returns the right row: about 1 sample in 26 for the starting model.</p>
+      <p>If every answer in a group gets the same reward, all advantages are 0 and the group teaches nothing. Watch the groups with no ✓.</p>
+      <p class="aside">To run in your browser, this demo updates only the two output distributions the task depends on, the column and the digit. It also leaves out GRPO's clipping and its penalty for drifting from the reference model. A full run updates every parameter through backpropagation.</p>
+      <p class="takeaway">With a verifier, a model improves by trial and error. GRPO compares answers within a group instead of training a separate critic.</p>
+    </div>
+    <figure class="figure" data-widget="rl">
+      <div class="rl-db"></div>
+      <div class="ctl-row rl-ctl"></div>
+      <div class="rl-group"></div>
+      <div class="rl-dist"></div>
+      <div class="rl-chart"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="rlinfra" data-pass="5" data-title="The RL loop as a system" data-strip="tokens ids" data-stage="groups of answers in flight"
+  data-fact="An RL post-training loop couples an inference engine (rollouts), verifiers (rewards), a trainer and a weight-sync step.">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Pass 5 · Becoming an assistant</span><span>4 of 4</span></p>
+      <h2 class="slide-title">The RL loop is a distributed system</h2>
+      <p class="lede">In large-scale RL, generating answers takes most of the time. So the loop runs an inference engine and a training job side by side.</p>
+      <ol>
+        <li><b>Rollout workers</b> run an inference engine such as vLLM or SGLang and sample groups of answers.</li>
+        <li><b>Verifiers</b> score them: run the SQL in a sandbox, check the math, run the unit tests.</li>
+        <li>The <b>trainer</b> computes advantages and updates the weights, sharded with FSDP or Megatron.</li>
+        <li><b>Weight sync</b> sends the new weights back to the rollout workers.</li>
+      </ol>
+      <p>Long answers make rollouts slow and uneven, so systems overlap generation with training, accept slightly stale samples, and rebalance work across GPUs. Open-source examples include veRL (from ByteDance, built on Ray), OpenRLHF and TRL.</p>
+      <p class="takeaway">Modern post-training couples a serving system and a training system in one loop. Scheduling them well is an infrastructure problem.</p>
+    </div>
+    <figure class="figure dots" data-widget="rlinfra">
+      <div class="ri-diagram"></div>
+      <div class="ctl-row ri-ctl"></div>
+      <p class="ri-note note-inline" aria-live="polite"></p>
+    </figure>
+  </div>
+</section>
+
+<!-- ================================================================== WRAP-UP -->
+<section class="slide" id="recap" data-pass="6" data-title="Everything that happened to one query" data-strip="tokens ids" data-stage="the whole journey">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Wrap-up</span><span>1 of 3</span></p>
+      <h2 class="slide-title">Everything that happened to one query</h2>
+      <p class="lede">One line of SQL took us through the whole field: text became tokens, tokens became vectors, attention found the table and the column, training pushed the loss to the data's own floor, and the same mechanics, scaled up 40 million times, need thousands of GPUs to train and careful systems to serve.</p>
+      <p>Select any stage to jump back to it.</p>
+      <p class="takeaway">Every topic in LLM training and inference is one of these steps, done for real data, at real scale.</p>
+    </div>
+    <figure class="figure" data-widget="recap">
+      <ol class="journey"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="plan" data-pass="6" data-title="A study path in nine steps" data-strip="tokens ids" data-stage="the whole journey">
+  <div class="slide-inner split wide-text">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Wrap-up</span><span>2 of 3</span></p>
+      <h2 class="slide-title">A study path in nine steps</h2>
+      <p class="lede">The topics of this deck, ordered as a study path from foundations to getting hired. Each step lists the slides that introduced it and what to study next to go deeper.</p>
+      <p>Select a slide number to revisit it.</p>
+      <p class="takeaway">The best next move is to build: a GPT from scratch, a parallel training run, a fast kernel, a small inference engine.</p>
+    </div>
+    <figure class="figure" data-widget="plan">
+      <ol class="plan-list"></ol>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="sources" data-pass="6" data-title="Sources" data-strip="tokens ids" data-stage="the whole journey">
+  <div class="slide-inner split">
+    <div class="narrative">
+      <p class="eyebrow"><span class="pass">Wrap-up</span><span>3 of 3</span></p>
+      <h2 class="slide-title">Sources and how this deck was made</h2>
+      <p class="lede">The running-example model was trained for this deck with PyTorch: a 2-layer, 2-head transformer with 9,968 parameters, trained with Adam for 6,000 steps on queries sampled from the grammar. Its weights ship with the page, and a JavaScript copy of the forward pass reproduces PyTorch's outputs to within 0.0001.</p>
+      <p>Every model number in the text is checked against that model by a script. Facts about real systems come from the papers and documents listed here.</p>
+      <p class="takeaway">Start with the papers marked as foundations; each one is short enough to read in an evening.</p>
+    </div>
+    <figure class="figure sources" data-widget="sources">
+      <ol class="src-list"></ol>
+    </figure>
+  </div>
+</section>
+
+  </main>
+
+  <nav class="navbar" aria-label="Slide navigation">
+    <button type="button" class="icon-btn nav-btn" id="nav-prev" aria-label="Previous slide">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      <span class="lbl">Back</span>
+    </button>
+    <div class="nav-mid">
+      <div class="nav-progress" id="nav-progress" aria-hidden="true"></div>
+      <div class="nav-meta"><span id="nav-pass"></span><span id="nav-counter"></span></div>
+    </div>
+    <div class="nav-side">
+      <button type="button" class="icon-btn" id="theme-btn" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="menu-btn" aria-expanded="false" aria-controls="menu" title="All slides (M)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <span class="lbl">Slides</span>
+      </button>
+      <button type="button" class="icon-btn nav-btn next" id="nav-next" aria-label="Next slide">
+        <span class="lbl">Next</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="panel" id="notes" hidden aria-label="What we know so far">
+  <div class="panel-head"><h2>What we know so far</h2><button type="button" class="icon-btn" data-close aria-label="Close notes">✕</button></div>
+  <p class="sub">Facts about our query, in the order the deck established them.</p>
+  <ol id="notes-list"></ol>
+</aside>
+<aside class="panel" id="menu" hidden aria-label="All slides">
+  <div class="panel-head"><h2>All slides</h2><button type="button" class="icon-btn" data-close aria-label="Close slide list">✕</button></div>
+  <ol id="menu-list"></ol>
+  <h3 class="menu-h">Terms</h3>
+  <dl id="glossary"></dl>
+  <p class="kbd-help"><span><kbd>←</kbd> <kbd>→</kbd> move</span><span><kbd>Home</kbd> <kbd>End</kbd> first / last</span><span><kbd>Esc</kbd> close</span></p>
+</aside>
+
+<script src="data/model-data.js"></script>
+<script src="js/model.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/w-start.js"></script>
+<script src="js/w-pass2.js"></script>
+<script src="js/w-pass3.js"></script>
+<script src="js/w-pass4.js"></script>
+<script src="js/w-pass5.js"></script>
+<script src="js/deck.js"></script>
+</body>
+</html>

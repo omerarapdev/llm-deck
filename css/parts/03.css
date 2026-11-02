@@ -1,0 +1,91 @@
+/* Part 03: styles for this part's custom figures. Class names start with nn-. */
+
+/* XOR against a straight line */
+.nn-xor-wrap { display: flex; justify-content: center; }
+.nn-xor { display: block; width: 100%; max-width: 380px; height: auto; }
+.nn-frame { fill: var(--paper); stroke: var(--frame); stroke-width: 1.25; }
+.nn-half { fill: color-mix(in oklab, var(--s2) 16%, transparent); stroke: none; }
+.nn-gridl { stroke: var(--grid-2); stroke-width: 1; }
+.nn-tick { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-3); }
+.nn-axl { font-family: var(--font-display); font-weight: 600; font-size: 12.5px; letter-spacing: 0.06em; fill: var(--ink-2); }
+.nn-bound { stroke: var(--ink); stroke-width: 2; }
+.nn-pt { stroke: var(--ink); stroke-width: 1.5; }
+.nn-pt.c1 { fill: var(--s2); }
+.nn-pt.c0 { fill: var(--plate); }
+.nn-wrong { fill: none; stroke: var(--red); stroke-width: 2.25; stroke-dasharray: 4 3; }
+.nn-ptl { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
+
+/* charts inside this part's figures (scoped so other parts are unaffected) */
+.nn-chart .chart .series.ink.dashed { stroke: var(--ink-2); stroke-width: 1.5; }
+.nn-chart .chart .series.s3.thin { opacity: 0.85; }
+
+/* finite differences: rows that disagree with backpropagation */
+.nn-fd tr.nn-bad td { color: var(--red); font-weight: 600; }
+.nn-tgt { font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--red); margin-left: 6px; }
+
+/* five tiles in one row where there is room */
+.nn-tiles5 { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+.nn-tiles5 .f-tile-v { font-size: 1rem; }
+
+/* normalization axes: the 8 × 16 residual stream as a heat table with row and column statistics */
+.nn-heat { margin-inline: 0; }
+.nn-heat td { min-width: 30px; height: 24px; }
+.nn-heat th.nn-rowh { text-align: right; padding-right: 6px; --chip-fs: 0.76rem; }
+.nn-heat .nn-stat { min-width: 46px; padding: 0 4px; font-size: 0.74rem; color: var(--ink); background: var(--paper); text-align: right; }
+.nn-heat th.nn-stat { color: var(--ink-3); background: none; text-align: right; }
+.nn-heat tr.nn-focus th.nn-rowh .chip { border-color: var(--red); background: var(--hi); }
+.nn-heat tr.nn-colstat td { height: 20px; font-size: 0.68rem; color: var(--ink-2); outline: none; background: none; }
+.nn-heat tr.nn-colstat th { font-family: var(--font-display); font-weight: 600; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; text-align: right; padding-right: 6px; }
+
+/* RMSNorm table */
+.nn-rms-t td, .nn-rms-t th { padding-top: 2px; padding-bottom: 2px; }
+
+/* momentum on the valley */
+.nn-mom-wrap, .nn-clip-wrap { display: flex; justify-content: center; }
+.nn-mom { display: block; width: 100%; max-width: 560px; height: auto; }
+.nn-contour { fill: none; stroke: var(--rule); stroke-width: 1; }
+.nn-path { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.nn-path.s1 { stroke: var(--s1); }
+.nn-path.s2 { stroke: var(--s2); }
+.nn-pathdot.s1 { fill: var(--s1); }
+.nn-pathdot.s2 { fill: var(--s2); }
+.nn-start { fill: var(--ink); }
+.nn-min { font-family: var(--font-mono); font-size: 16px; font-weight: 700; fill: var(--ink); }
+
+/* clipping */
+.nn-clip { display: block; width: 100%; max-width: 330px; height: auto; }
+.nn-axis { stroke: var(--ink-3); stroke-width: 1.1; }
+.nn-ball { fill: color-mix(in oklab, var(--s1) 10%, transparent); stroke: var(--s1); stroke-width: 1.4; stroke-dasharray: 5 3; }
+.nn-box { fill: none; stroke: var(--s2); stroke-width: 1.2; stroke-dasharray: 2 3; }
+.nn-vec { stroke-width: 2.2; }
+.nn-vec.g { stroke: var(--ink-2); }
+.nn-vec.s1 { stroke: var(--s1); stroke-width: 2.6; }
+.nn-vec.s2 { stroke: var(--s2); }
+.nn-ah.g { fill: var(--ink-2); }
+.nn-ah.s1 { fill: var(--s1); }
+.nn-ah.s2 { fill: var(--s2); }
+
+/* The legacy optim widget on nn-adam: its contour ellipses are larger than its viewBox and
+   .chart sets overflow: visible, so clip them; its Adam swatch uses --accent (blue here) while the
+   Adam path is drawn red, so match the swatch to the path. */
+#sheet-nn-adam .opt-svg { overflow: hidden; }
+#sheet-nn-adam .opt-plot .legend .key:nth-child(2) .sw { background: var(--red) !important; }
+
+/* the in-page trainer */
+.nn-train { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start; }
+.nn-field-wrap { flex: 1 1 240px; max-width: 330px; }
+.nn-field { display: block; width: 100%; height: auto; }
+.nn-cell { stroke: none; shape-rendering: crispEdges; }
+.nn-fieldframe { fill: none; stroke: var(--frame); stroke-width: 1.25; }
+.nn-dpt { stroke: var(--ink); stroke-width: 0.8; }
+.nn-dpt.c0 { fill: var(--s1); }
+.nn-dpt.c1 { fill: var(--s2); }
+.nn-train-chart { flex: 1 1 240px; min-width: 0; }
+
+/* nn-adam: the three-step table, one row per coordinate */
+.nn-adamtab td { white-space: nowrap; }
+.nn-adamtab td[rowspan] { vertical-align: middle; text-align: center; }
+.nn-adamtab tr.nn-t0 td { border-top: 1.5px solid var(--frame); }
+
+/* keep a formula and the punctuation after it on one line */
+.nn-nw { white-space: nowrap; }

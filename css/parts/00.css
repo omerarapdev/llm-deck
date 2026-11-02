@@ -1,0 +1,11 @@
+/* Part 00: styles for this part's custom figures. */
+.cv-svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.cv-base { stroke: var(--frame); stroke-width: 1.5; }
+.cv-one { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+.cv-ax { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-3); }
+.cv-bar { fill: var(--ink-2); }
+.cv-bar.sure { fill: var(--blue); }
+.cv-p { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.cv-tok { font-family: var(--font-mono); font-size: 13px; font-weight: 600; fill: var(--ink); }
+.cv-note { font-family: var(--font-hand); font-size: 15px; fill: var(--red); }
+.cv-lead { stroke: var(--red); stroke-width: 1; }

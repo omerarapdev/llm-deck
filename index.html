@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One Query, End to End</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A drawing set on how large language models are trained and served, from derivatives and loss functions to GPU kernels, distributed training and inference, built around one SQL query and a real 9,968-parameter model that runs in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Caveat:wght@500;600&family=JetBrains+Mono:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+<link rel="stylesheet" href="css/sheet.css">
+<link rel="stylesheet" href="css/widgets.css">
+<link rel="stylesheet" href="css/parts/00.css">
+<link rel="stylesheet" href="css/parts/01.css">
+<link rel="stylesheet" href="css/parts/02.css">
+<link rel="stylesheet" href="css/parts/03.css">
+<link rel="stylesheet" href="css/parts/04.css">
+<link rel="stylesheet" href="css/parts/05.css">
+<link rel="stylesheet" href="css/parts/06.css">
+<link rel="stylesheet" href="css/parts/07.css">
+<link rel="stylesheet" href="css/parts/08.css">
+<link rel="stylesheet" href="css/parts/09.css">
+<link rel="stylesheet" href="css/parts/10.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-t">One Query, End to End</span>
+      <span class="brand-s">Drawing set · LLM training &amp; inference</span>
+    </div>
+    <div class="ruler" id="ruler"></div>
+    <div class="tools">
+      <button type="button" class="tool" id="reg-btn" title="Drawing register (G)" aria-controls="register">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 3h12M2 8h12M2 13h12"/><path d="M5 1.5v3M5 6.5v3M5 11.5v3"/></svg>
+        <span class="lbl">Register</span>
+      </button>
+      <button type="button" class="tool" id="terms-btn" title="Terms (T)" aria-controls="terms">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 2h8l2 2v10H3z"/><path d="M5.5 6.5h5M5.5 9h5M5.5 11.5h3"/></svg>
+        <span class="lbl">Terms</span><span class="count" id="terms-count"></span>
+      </button>
+      <button type="button" class="tool" id="theme-btn" title="Switch between graph paper and blueprint">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="12" height="12"/><path d="M2 2l12 12" /><path d="M8 2v12M2 8h12" stroke-width="0.8"/></svg>
+        <span class="lbl"></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="sheet-view" tabindex="-1" aria-live="polite"></main>
+
+  <nav class="botbar" aria-label="Sheet navigation">
+    <button type="button" class="nav-btn" id="nav-prev" aria-label="Previous sheet"><span class="arrow" aria-hidden="true">◂</span><span class="no" id="nav-prev-no"></span></button>
+    <div class="nav-mid">
+      <span id="nav-where"></span>
+      <button type="button" class="resume" id="resume" hidden></button>
+      <span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> sheets · <kbd>G</kbd> register</span>
+    </div>
+    <button type="button" class="nav-btn next" id="nav-next" aria-label="Next sheet"><span class="no" id="nav-next-no"></span><span class="arrow" aria-hidden="true">▸</span></button>
+  </nav>
+</div>
+
+<aside class="panel" id="register" hidden aria-label="Drawing register">
+  <div class="panel-head"><h2>Drawing register</h2><button type="button" class="close-btn" data-close aria-label="Close">✕</button></div>
+  <p class="sub">Every sheet in the set, by part and chapter.</p>
+  <div class="search"><label for="reg-q">Find</label><input id="reg-q" type="search" placeholder="loss, warp, KV cache…" autocomplete="off"></div>
+  <div id="reg-list"></div>
+  <p class="kbd-help"><span><kbd>←</kbd> <kbd>→</kbd> previous / next</span><span><kbd>Home</kbd> <kbd>End</kbd> first / last</span><span><kbd>G</kbd> register</span><span><kbd>T</kbd> terms</span><span>Add <code>?static</code> to the address to turn off motion</span></p>
+</aside>
+<aside class="panel" id="terms" hidden aria-label="Terms">
+  <div class="panel-head"><h2>Terms</h2><button type="button" class="close-btn" data-close aria-label="Close">✕</button></div>
+  <p class="sub">Every term the set defines, with the sheet that defines it.</p>
+  <dl id="terms-list"></dl>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+
+<script src="data/model-data.js"></script>
+<script src="js/core/model.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/vendor/katex.min.js"></script>
+<script src="js/core/templates.js"></script>
+<script src="js/legacy-widgets/w-start.js"></script>
+<script src="js/legacy-widgets/w-pass2.js"></script>
+<script src="js/legacy-widgets/w-pass3.js"></script>
+<script src="js/legacy-widgets/w-pass4.js"></script>
+<script src="js/legacy-widgets/w-pass5.js"></script>
+<script src="js/core/engine.js"></script>
+<script src="js/core/figs.js"></script>
+<script src="content/00-start.js"></script>
+<script src="content/01-math.js"></script>
+<script src="content/02-learning.js"></script>
+<script src="content/03-networks.js"></script>
+<script src="content/04-language.js"></script>
+<script src="content/05-transformer.js"></script>
+<script src="content/06-gpu.js"></script>
+<script src="content/07-scale.js"></script>
+<script src="content/08-serving.js"></script>
+<script src="content/09-post.js"></script>
+<script src="content/10-end.js"></script>
+<script>Deck.start();</script>
+</body>
+</html>

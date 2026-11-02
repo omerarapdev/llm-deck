@@ -1,0 +1,76 @@
+/* Part 08: styles for this part's custom figures (prefix serve-). Colours only from sheet tokens. */
+
+/* small chart titles and two-chart grids */
+.serve-sub { margin: 0 0 2px; font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.serve-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+
+/* prefill and decode passes */
+.serve-pass-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; padding: 2px; }
+.serve-pass {
+  display: grid; justify-items: center; align-content: start; gap: 5px; padding: 7px 6px 6px; min-width: 4.4rem;
+  border: 1px solid var(--rule); background: var(--paper); --chip-fs: 0.72rem; transition: opacity 0.2s;
+}
+.serve-pass.pre { border-color: var(--s1); background: color-mix(in oklab, var(--s1) 9%, var(--paper)); }
+.serve-pass.cur { outline: 2px solid var(--red); outline-offset: 1px; }
+.serve-pass.later { opacity: 0.28; }
+.serve-pass-k { font-family: var(--font-display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.serve-pass-in { display: flex; flex-wrap: nowrap; gap: 3px; }
+.serve-pass-ar { color: var(--ink-3); line-height: 1; }
+.serve-pass-out { display: grid; justify-items: center; gap: 2px; }
+.serve-pass-p { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-2); }
+
+/* prefix cache */
+.serve-pfx-list { display: grid; gap: 3px; width: max-content; min-width: 100%; }
+.serve-pfx-row { display: flex; align-items: center; gap: 8px; --chip-fs: 0.7rem; }
+.serve-pfx-n { width: 1.6rem; text-align: right; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-3); }
+.serve-pfx-chips { display: flex; gap: 3px; }
+.chip.serve-reused { color: var(--ink-3); border-style: dashed; background: repeating-linear-gradient(-45deg, var(--rule-2) 0 1px, var(--plate) 1px 5px); }
+.sw.serve-sw-reused { background: repeating-linear-gradient(-45deg, var(--ink-3) 0 1px, var(--plate) 1px 4px); }
+.sw.serve-sw-new { background: var(--plate); }
+
+/* memory bar */
+.serve-membar { display: flex; height: 30px; border: 1.25px solid var(--frame); background: var(--plate-2); overflow: hidden; }
+.serve-membar-seg { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.serve-membar-seg + .serve-membar-seg { border-left: 1.25px solid var(--frame); }
+.serve-c-w { background: var(--ink-2); color: var(--paper); }
+.serve-c-kv { background: var(--s1); color: var(--on-ink); }
+.serve-c-free { background: repeating-linear-gradient(-45deg, var(--rule) 0 1px, var(--plate) 1px 6px); color: var(--ink-3); }
+.sw.serve-c-w { background: var(--ink-2); } .sw.serve-c-kv { background: var(--s1); }
+.sw.serve-c-free { background: repeating-linear-gradient(-45deg, var(--rule) 0 1px, var(--plate) 1px 4px); }
+
+/* small SVG timelines (chunked prefill, preemption) */
+.serve-chunk-svg, .serve-pe-svg { display: block; width: 100%; height: auto; min-width: 480px; }
+.serve-tl-r { font-family: var(--font-display); font-weight: 600; font-size: 12px; fill: var(--ink-2); letter-spacing: 0.03em; }
+.serve-tl-axis { stroke: var(--rule); stroke-width: 1; }
+.serve-chunk-box { fill: var(--s1); stroke: var(--plate); stroke-width: 0.5; }
+.serve-chunk-l { font-family: var(--font-mono); font-size: 10.5px; fill: var(--on-ink); pointer-events: none; }
+.serve-chunk-tick { stroke: var(--s2); stroke-width: 2; }
+.serve-pe-prefill { fill: var(--s1); } .serve-pe-decode { fill: var(--s3); } .serve-pe-recompute { fill: var(--s2); }
+.serve-pe-preempted { fill: none; stroke: var(--ink-3); stroke-dasharray: 3 3; }
+.sw.serve-pe-prefill { background: var(--s1); } .sw.serve-pe-decode { background: var(--s3); } .sw.serve-pe-recompute { background: var(--s2); }
+.sw.serve-pe-preempted { background: none; border-style: dashed; }
+
+
+/* split-KV attention table */
+.serve-vec { font-family: var(--font-mono); font-size: 0.74rem; white-space: pre; }
+.serve-vec { display: grid; gap: 1px; }
+
+/* load balancing */
+.serve-lb-svg { display: block; width: 100%; height: auto; min-width: 460px; }
+.serve-lb-req { stroke: var(--plate); stroke-width: 0.75; }
+.serve-lb-req.s1 { fill: var(--s1); } .serve-lb-req.s2 { fill: var(--s2); } .serve-lb-req.s3 { fill: var(--s3); }
+.serve-lb-req.s4 { fill: var(--s4); } .serve-lb-req.s5 { fill: var(--s5); }
+.serve-lb-v { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-2); }
+.serve-lb-mean { stroke: var(--red); stroke-width: 1.25; stroke-dasharray: 4 3; }
+.serve-lb-v { paint-order: stroke; stroke: var(--plate); stroke-width: 3px; }
+
+
+/* grammar-constrained decoding */
+.serve-gr-seq { display: flex; flex-wrap: wrap; gap: 4px; min-height: 2.2rem; align-items: center; --chip-fs: 0.82rem; }
+.f-table tr.serve-gr-no td { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--red); }
+.f-table tr.serve-gr-no td .chip { opacity: 0.55; }
+.f-table td .chip { --chip-fs: 0.74rem; }
+.serve-gr-ok { border-left-color: var(--good); }
+.serve-gr-bad { display: grid; gap: 4px; }
+.f-mm-expl.serve-gr-bad { border-left-color: var(--bad); display: block; }
+.serve-gr-badq { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-2); }

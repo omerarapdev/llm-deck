@@ -1,0 +1,124 @@
+/* Part 05: styles for the transformer part's custom figures (prefix tf-). */
+
+/* shared explanation line */
+.tf-expl { font-size: 0.9rem; }
+.tf-expl code { font-size: 0.86em; }
+
+/* ---------------------------------------------------------------- tf-mask: scores, mask, softmax */
+.tf-mask-t { border-collapse: separate; border-spacing: 2px; font-family: var(--font-mono); font-size: 0.74rem; margin-inline: auto; }
+.tf-mask-t th { font-weight: 500; color: var(--ink-2); padding: 0 4px; white-space: nowrap; }
+.tf-mask-col { text-align: center; vertical-align: bottom; min-width: 44px; }
+.tf-mask-rowh { text-align: right; }
+.tf-mask-corner { font-family: var(--font-display); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em; color: var(--ink-3); text-align: right; vertical-align: bottom; }
+.tf-mask-j { display: block; font-size: 0.66rem; color: var(--ink-3); }
+.tf-mask-rowh .tf-mask-j { display: inline; margin-right: 5px; }
+.tf-mask-c { min-width: 44px; height: 28px; text-align: center; color: var(--ink); outline: 1px solid var(--rule-2); outline-offset: -1px; font-variant-numeric: tabular-nums; }
+.tf-mask-c.fut { outline: 1.5px dashed var(--red); outline-offset: -2px; }
+.tf-mask-c.masked {
+  color: var(--ink-3);
+  background: repeating-linear-gradient(45deg, transparent 0 4px, var(--rule-2) 4px 5px);
+}
+.tf-mask-sum { min-width: 40px; text-align: center; color: var(--ink-2); border-left: 1.5px solid var(--frame); }
+.tf-mask-t tr { cursor: pointer; }
+.tf-mask-t tr:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-mask-t tr.is-row th.tf-mask-rowh { color: var(--red); font-weight: 700; }
+.tf-mask-t tr.is-row td { box-shadow: inset 0 2px 0 var(--red), inset 0 -2px 0 var(--red); }
+
+/* ---------------------------------------------------------------- tf-scale: dot-product variance */
+.tf-scale-plot { min-width: 0; }
+
+/* ---------------------------------------------------------------- tf-mlp: GELU and the hidden units */
+.tf-mlp-plot { min-width: 0; }
+
+/* ---------------------------------------------------------------- tf-ablate: switch sublayers off */
+.tf-tog-row { gap: 6px 8px; align-items: center; }
+.tf-tog { position: relative; padding-left: 26px; }
+.tf-tog::before {
+  content: ""; position: absolute; left: 9px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
+  border: 1.5px solid var(--ink); background: var(--plate);
+}
+.tf-tog[aria-pressed="true"]::before { background: var(--ink); box-shadow: inset 0 0 0 2px var(--plate); }
+.tf-tog[aria-pressed="false"] { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--red); }
+.tf-abl { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+.tf-abl th { font-family: var(--font-display); font-weight: 600; font-size: 0.86rem; letter-spacing: 0.03em; color: var(--ink-2); text-align: left; padding: 2px 6px 4px; white-space: nowrap; }
+.tf-abl th.r, .tf-abl td.r { text-align: right; }
+.tf-abl td { padding: 3px 6px; border-top: 1px solid var(--rule-2); vertical-align: middle; }
+.tf-abl tr.is-hit td { background: var(--red-soft); }
+.tf-abl-p { display: grid; grid-template-columns: minmax(50px, 1fr) 3.4em; gap: 6px; align-items: center; min-width: 120px; }
+.tf-abl-p .num { font-family: var(--font-mono); font-size: 0.8rem; text-align: right; font-variant-numeric: tabular-nums; }
+.tf-abl td.num { font-family: var(--font-mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- tf-perm: shuffle the inputs */
+.tf-perm-t td { min-width: 3.4em; }
+.tf-perm-vecs { display: grid; gap: 6px; }
+.tf-perm-v { display: grid; grid-template-columns: minmax(150px, 15em) minmax(0, 1fr); gap: 10px; align-items: center; }
+.tf-perm-l { font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.04em; color: var(--ink-2); }
+@media (max-width: 560px) { .tf-perm-v { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* ---------------------------------------------------------------- tf-rope: rotation in one 2-D pair */
+.tf-rope-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+.tf-rope-side { display: grid; gap: 10px; }
+.tf-rope-side .f-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tf-rope-svg { display: block; width: 100%; max-width: 340px; height: auto; margin-inline: auto; }
+.tf-rope-axis { stroke: var(--ink-3); stroke-width: 1; }
+.tf-rope-circ { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.tf-rope-a { stroke-width: 2.6; }
+.tf-rope-a.q { stroke: var(--s1); }
+.tf-rope-a.k { stroke: var(--s2); }
+.tf-rope-a.q0 { stroke: var(--s1); stroke-width: 1.3; stroke-dasharray: 4 3; opacity: 0.7; }
+.tf-rope-a.k0 { stroke: var(--s2); stroke-width: 1.3; stroke-dasharray: 4 3; opacity: 0.7; }
+.tf-rope-ah.q, .tf-rope-ah.q0 { fill: var(--s1); }
+.tf-rope-ah.k, .tf-rope-ah.k0 { fill: var(--s2); }
+.tf-rope-arc { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
+.tf-rope-l { font-family: var(--font-mono); font-size: 12px; fill: var(--ink); paint-order: stroke; stroke: var(--plate); stroke-width: 4px; }
+@media (max-width: 560px) { .tf-rope-wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------- tf-gqa: query heads sharing key/value heads */
+.tf-gqa-svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.tf-gqa-t { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.04em; fill: var(--ink-2); }
+.tf-gqa-q { stroke: var(--frame); stroke-width: 0.6; }
+.tf-gqa-kv { stroke: var(--frame); stroke-width: 1; }
+.tf-gqa-q.g0, .tf-gqa-kv.g0 { fill: color-mix(in oklab, var(--s1) 55%, var(--plate)); }
+.tf-gqa-q.g1, .tf-gqa-kv.g1 { fill: color-mix(in oklab, var(--s2) 55%, var(--plate)); }
+.tf-gqa-ln { stroke-width: 0.8; opacity: 0.75; }
+.tf-gqa-ln.g0 { stroke: var(--s1); }
+.tf-gqa-ln.g1 { stroke: var(--s2); }
+
+/* ---------------------------------------------------------------- tf-swa: causal and sliding-window masks */
+.tf-swa-grids { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.tf-swa-fig { margin: 0; display: grid; gap: 4px; justify-items: center; }
+.tf-swa-fig figcaption { font-family: var(--font-display); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.03em; color: var(--ink-2); }
+.tf-swa-svg { display: block; width: 100%; max-width: 220px; height: auto; }
+.tf-swa-on { fill: color-mix(in oklab, var(--s1) 70%, var(--plate)); stroke: var(--plate); stroke-width: 0.6; }
+.tf-swa-off { fill: var(--plate-2); stroke: var(--plate); stroke-width: 0.6; }
+.tf-swa-cap { margin: 0; font-size: var(--fs-small); color: var(--ink-2); }
+.tf-swa-strip { display: flex; gap: 2px; margin-top: 4px; }
+.tf-swa-strip span { flex: 1 1 0; height: 14px; background: var(--plate-2); outline: 1px solid var(--rule-2); outline-offset: -1px; }
+.tf-swa-strip span.on { background: color-mix(in oklab, var(--s2) 70%, var(--plate)); }
+@media (max-width: 560px) {
+  .tf-abl { font-size: 0.8rem; }
+  .tf-abl th { font-size: 0.74rem; letter-spacing: 0.02em; white-space: normal; }
+  .tf-abl td { padding: 3px 3px; }
+  .tf-abl-p { grid-template-columns: minmax(24px, 1fr) 3.1em; gap: 4px; min-width: 76px; }
+}
+
+/* the two full-width block diagrams scroll sideways on phones instead of shrinking */
+@media (max-width: 760px) {
+  #sheet-tf-plan .f-dia, #sheet-tf-block-diagram .f-dia { min-width: 860px; }
+}
+
+/* wide tables keep readable columns on phones and scroll sideways instead */
+@media (max-width: 760px) {
+  #sheet-tf-matrix-form .f-table { min-width: 640px; }
+  #sheet-tf-llama3 .f-table { min-width: 720px; }
+  #sheet-tf-floor .f-table { min-width: 470px; }
+}
+
+/* sinusoid legend and the SwiGLU unit's thick curve */
+.tf-leg-t { font-family: var(--font-mono); font-size: 11.5px; fill: var(--ink-2); }
+#sheet-tf-swiglu .chart .series.s1 { stroke-width: 3.6; }
+
+/* Workaround for a core rule: sheet.css gives .fig-cap "flex: 1 1 14em", meant for control rows.
+   Inside a plate's column-direction .fig-body that basis becomes a 14em height, so widget captions
+   (logits, real, moe) were padded to ~244px. Size them to their text on this part's sheets. */
+.sheet[data-part="5"] .fig-body > .fig-cap { flex: none; }

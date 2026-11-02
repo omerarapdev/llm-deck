@@ -1,0 +1,65 @@
+/* Part 09: styles for this part's custom figures (post-*). Colours come only from the theme variables. */
+
+/* post-continue: samples from the base model */
+.post-prompt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; --chip-fs: 0.82rem; }
+.post-tag { font-family: var(--font-display); font-weight: 600; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-right: 6px; }
+.post-gap { font-family: var(--font-mono); color: var(--ink-3); padding: 0 4px; }
+.post-samples { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.post-samples li { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 3px 8px; background: var(--plate-2); --chip-fs: 0.78rem; }
+.post-samples li.ok { background: color-mix(in oklab, var(--good) 14%, var(--plate)); }
+.post-n { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.post-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.post-mark { font-family: var(--font-display); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--ink-2); white-space: nowrap; }
+.post-samples li.ok .post-mark { color: var(--good); }
+.post-dots { display: flex; flex-wrap: wrap; gap: 3px; min-height: 12px; }
+.post-dot { width: 10px; height: 10px; border: 1px solid var(--rule); background: var(--plate-2); }
+.post-dot.ok { background: var(--good); border-color: var(--good); }
+
+/* post-chat: a chat template as one sequence */
+.post-chat { display: grid; gap: 5px; }
+.post-chat-l { font-family: var(--font-display); font-weight: 600; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.post-chat-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.post-seg { font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.3; padding: 3px 6px; border: 1px solid var(--ink-2); background: var(--plate); color: var(--ink); overflow-wrap: anywhere; }
+.post-seg.sp { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.post-seg.nl { border-style: dashed; color: var(--ink-3); }
+.post-seg.role { font-weight: 700; }
+.post-seg.txt { font-family: var(--font-body); font-size: 0.86rem; }
+.post-seg.gen { box-shadow: inset 0 0 0 1px var(--blue); border-color: var(--blue); }
+.post-seg.gen.sp { box-shadow: 0 0 0 2px var(--blue); }
+
+/* shared SVG text */
+.post-pack-svg, .post-lora-svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.post-ax { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; fill: var(--ink-2); }
+.post-ax.b { fill: var(--ink); font-size: 14px; }
+.post-ax.note { font-family: var(--font-hand); font-size: 15px; font-weight: 500; letter-spacing: 0; fill: var(--red); }
+.post-op { font-family: var(--font-mono); font-size: 28px; fill: var(--ink-2); }
+.post-op.sm { font-size: 18px; }
+
+/* post-pack: token slots and attention masks */
+.post-tok { stroke: var(--frame); stroke-width: 1; }
+.post-tok.s1, .post-m.on.s1, .post-sw.s1 { fill: color-mix(in oklab, var(--s1) 45%, var(--plate)); }
+.post-tok.s2, .post-m.on.s2, .post-sw.s2 { fill: color-mix(in oklab, var(--s2) 45%, var(--plate)); }
+.post-tok.s3, .post-m.on.s3, .post-sw.s3 { fill: color-mix(in oklab, var(--s3) 45%, var(--plate)); }
+.post-tok-l { font-family: var(--font-mono); font-size: 9.5px; fill: var(--ink); }
+.post-pad { stroke: var(--rule); stroke-width: 1; }
+.post-hatch { stroke: var(--ink-3); stroke-width: 1; }
+.post-m { stroke: var(--plate); stroke-width: 0.6; }
+.post-m.off, .post-sw.off { fill: var(--plate-2); }
+.post-m.cross, .post-sw.cross { fill: var(--red); }
+.post-m-frame { fill: none; stroke: var(--frame); stroke-width: 1.2; }
+.post-sw { stroke: var(--frame); stroke-width: 0.8; }
+
+/* post-lora: a frozen matrix and its factors */
+.post-w0 { fill: var(--plate-2); stroke: var(--frame); stroke-width: 1.2; }
+.post-b, .post-a { fill: color-mix(in oklab, var(--blue) 40%, var(--plate)); stroke: var(--blue); stroke-width: 1; }
+
+/* post-pg: the policy-gradient table; Greek letters and variable names must not be uppercased */
+.post-pg thead th { text-transform: none; letter-spacing: 0.02em; font-size: 0.86rem; }
+.post-pg td.mono { font-family: var(--font-mono); font-size: 0.8rem; white-space: nowrap; }
+.post-pg tr.sum td { border-top: 1.5px solid var(--frame); font-weight: 600; }
+.post-pg td .chip { --chip-fs: 0.78rem; }
+
+/* custom drawings that fit a phone without scrolling; capped on wide plates */
+.post-svg-host { display: flex; justify-content: center; }
+.post-pack-svg, .post-lora-svg { min-width: 0; max-width: 470px; }
+.post-pg td.nowrap { white-space: nowrap; }
