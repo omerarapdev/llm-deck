@@ -661,19 +661,52 @@ input.txt { min-height: 38px; width: 100%; padding: 0 10px; border: 1.5px solid 
 .f-mm-expl, .f-graph-expl, .f-net-expl, .f-gd-info { margin: 0; padding: 8px 12px; border-left: 3px solid var(--red); background: var(--paper); font-size: 0.92rem; min-height: 2.6em; overflow-x: auto; }
 
 /* ---------------------------------------------------------------- computational graph */
-.f-graph { display: block; width: 100%; height: auto; min-width: 460px; }
+.f-graph-fig { display: flex; flex-direction: column; gap: 12px; width: 100%; min-width: 0; margin: 0 auto; }
+.f-graph-wrap { min-width: 0; }
+.f-graph { display: block; width: 100%; height: auto; margin: 0 auto; overflow: visible; }
 .f-node rect { fill: var(--paper); stroke: var(--frame); stroke-width: 1.25; }
 .f-node.leaf rect { fill: var(--plate-2); }
-.f-node.param rect { stroke: var(--blue); stroke-width: 1.75; }
+.f-node.param rect { stroke: var(--blue); stroke-width: 2; fill: var(--blue-soft); }
 .f-node.out rect { stroke-width: 2.4; }
-.f-node.cur rect { stroke: var(--red); stroke-width: 2.6; fill: var(--hi); }
-.f-node-l { font-family: var(--font-display); font-weight: 600; font-size: 14px; fill: var(--ink); }
-.f-node-v { font-family: var(--font-mono); font-size: 12.5px; fill: var(--ink-2); }
-.f-node-g { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; fill: var(--red); }
-.f-edge { stroke: var(--ink-2); stroke-width: 1.3; }
-.f-edge.bw { stroke: var(--red); stroke-width: 2.4; }
-.f-edge-l { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; fill: var(--red); }
+.f-node.fw-cur rect, .f-node.nudged rect { stroke: var(--ink); stroke-width: 3.2; }
+.f-node.bw-cur rect { stroke: var(--red); stroke-width: 2.6; fill: var(--red-soft); }
+.f-node.bw-src rect { stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 5 3; }
+.f-node.moved rect { stroke: var(--ink); stroke-width: 2; }
+.f-node.still { opacity: 0.5; }
+.f-node.rest rect { fill: none; stroke: var(--ink-3); stroke-dasharray: 5 4; }
+.f-node-l { font-family: var(--font-display); font-weight: 600; font-size: 16px; fill: var(--ink); }
+.f-node-v { font-family: var(--font-mono); font-size: 14px; fill: var(--ink-2); }
+.f-node-g { font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; fill: var(--red); }
+.f-node-d { font-family: var(--font-mono); font-size: 13px; font-weight: 700; fill: var(--ink); }
+.f-script { font-size: 72%; }
+.f-edge { stroke: var(--ink-3); stroke-width: 1.4; }
+.f-edge.on { stroke: var(--ink); stroke-width: 2.2; }
+.f-edge.bw { stroke: var(--red); stroke-width: 2.2; }
+.f-edge-l { font-family: var(--font-mono); font-size: 13px; fill: var(--ink-2); paint-order: stroke; stroke: var(--plate); stroke-width: 5px; stroke-linejoin: round; }
+.f-edge-l.is-cur { fill: var(--red); font-weight: 700; }
 .f-ah { fill: var(--ink-2); }
+.f-ah.ink { fill: var(--ink-3); }
+.f-ah.on { fill: var(--ink); }
+.f-ah.bw { fill: var(--red); }
+.f-graph-ledger { container-type: inline-size; display: flex; flex-direction: column; gap: 10px; }
+.f-graph-ledger .f-table td { vertical-align: middle; }
+/* narrow plates: each backward row puts its local derivative over its product */
+@container (max-width: 460px) {
+  .f-graph-ledger table.bw, .f-graph-ledger table.bw tbody { display: block; }
+  .f-graph-ledger table.bw thead { display: none; }
+  .f-graph-ledger table.bw tr { display: grid; grid-template-columns: auto minmax(0, 1fr); border: 1px solid var(--rule); border-top: none; }
+  .f-graph-ledger table.bw tr:first-child { border-top: 1px solid var(--rule); }
+  .f-graph-ledger table.bw td { border: none; padding: 2px 8px; }
+  .f-graph-ledger table.bw td:first-child { grid-row: span 2; align-self: center; }
+  .f-graph-ledger table.bw td:nth-child(2) { padding-top: 6px; }
+  .f-graph-ledger table.bw td:nth-child(3) { padding-bottom: 6px; }
+}
+.f-graph-ledger tr.is-cur td { background: var(--red-soft); }
+.f-graph-ledger tr.is-cur td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.f-graph-ledger tr.is-cur.fw td { background: var(--blue-soft); }
+.f-graph-ledger tr.is-cur.fw td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
+.f-ledger-empty { color: var(--ink-3); font-style: italic; }
+.f-ledger-note { color: var(--ink-3); font-size: 0.85em; white-space: nowrap; }
 
 /* ---------------------------------------------------------------- networks */
 .f-net { display: block; width: 100%; height: auto; }
@@ -3149,6 +3182,9 @@ window.MODEL_DATA = {"config":{"V":113,"T":8,"d":16,"H":2,"L":2,"dff":64,"eps":1
         const prev = mo.previousElementSibling;
         const prefix = !prev || (prev.localName === "mo" && prev.textContent.trim() !== "" && !/^[)\]}|⟩!′″]$/.test(prev.textContent.trim()));
         if (prefix) { mo.setAttribute("lspace", "0em"); mo.setAttribute("rspace", "0em"); }
+      } else if (c === "=" && !mo.previousElementSibling && !mo.hasAttribute("lspace")) {
+        // a formula that starts with "=" continues the one before it, after an ordinary space
+        mo.setAttribute("lspace", "0em");
       } else if (c === "\u2061") {
         mo.setAttribute("lspace", "0em");
         mo.setAttribute("rspace", "0em");
@@ -6832,107 +6868,459 @@ window.WIDGET_TEMPLATES = {
   });
 
   // ------------------------------------------------------------ graph: forward and backward through a computation
+  // Each operation gives f (forward), d (its local derivatives, one per input), tex (its formula,
+  // from input names or values) and dtex (each local derivative as a formula of the input names);
+  // dsub, where given, is that formula with the values put in. Leaves (input, param, const) have no f.
   const OPS = {
-    input: { f: () => null }, param: { f: () => null }, const: { f: () => null },
-    add: { f: (a, b) => a + b, d: () => [1, 1], sym: "+", show: (n, a, b) => `${a} + ${b}` },
-    sub: { f: (a, b) => a - b, d: () => [1, -1], sym: "−", show: (n, a, b) => `${a} − ${b}` },
-    mul: { f: (a, b) => a * b, d: (a, b) => [b, a], sym: "×", show: (n, a, b) => `${a} × ${b}` },
-    div: { f: (a, b) => a / b, d: (a, b) => [1 / b, -a / (b * b)], sym: "÷", show: (n, a, b) => `${a} ÷ ${b}` },
-    square: { f: (a) => a * a, d: (a) => [2 * a], sym: "(·)²", show: (n, a) => `${a}²` },
-    exp: { f: (a) => Math.exp(a), d: (a) => [Math.exp(a)], sym: "exp(·)", show: (n, a) => `e^${a}` },
-    log: { f: (a) => Math.log(a), d: (a) => [1 / a], sym: "ln(·)", show: (n, a) => `ln ${a}` },
-    neg: { f: (a) => -a, d: () => [-1], sym: "−(·)", show: (n, a) => `−${a}` },
-    sigmoid: { f: (a) => 1 / (1 + Math.exp(-a)), d: (a) => { const q = 1 / (1 + Math.exp(-a)); return [q * (1 - q)]; }, sym: "σ(·)", show: (n, a) => `σ(${a})` },
-    tanh: { f: (a) => Math.tanh(a), d: (a) => [1 - Math.tanh(a) ** 2], sym: "tanh(·)", show: (n, a) => `tanh(${a})` },
-    relu: { f: (a) => Math.max(0, a), d: (a) => [a > 0 ? 1 : 0], sym: "ReLU(·)", show: (n, a) => `max(0, ${a})` },
-    sum: { f: (...a) => a.reduce((x, y) => x + y, 0), d: (...a) => a.map(() => 1), sym: "Σ", show: (n, ...a) => a.join(" + ") },
+    input: {}, param: {}, const: {},
+    add: { f: (a, b) => a + b, d: () => [1, 1], tex: ([a, b]) => `${a} + ${b}`, dtex: () => ["1", "1"] },
+    sub: { f: (a, b) => a - b, d: () => [1, -1], tex: ([a, b]) => `${a} - ${b}`, dtex: () => ["1", "{-1}"] },
+    mul: { f: (a, b) => a * b, d: (a, b) => [b, a], tex: ([a, b]) => `${a} \\times ${b}`, dtex: ([a, b]) => [b, a] },
+    div: { f: (a, b) => a / b, d: (a, b) => [1 / b, -a / (b * b)], tex: ([a, b]) => `${a} / ${b}`, dtex: ([a, b]) => [`1/${b}`, `{-${a}}/${b}^2`], dsub: ([a, b]) => [`1/${b}`, `{-${a}}/${b}^2`] },
+    square: { f: (a) => a * a, d: (a) => [2 * a], tex: ([a]) => `${a}^2`, dtex: ([a]) => [`2${a}`], dsub: ([a]) => [`2 \\times ${a}`] },
+    exp: { f: (a) => Math.exp(a), d: (a) => [Math.exp(a)], tex: ([a]) => `e^{${a}}`, dtex: ([a]) => [`e^{${a}}`] },
+    log: { f: (a) => Math.log(a), d: (a) => [1 / a], tex: ([a]) => `\\ln ${a}`, dtex: ([a]) => [`1/${a}`], dsub: ([a]) => [`1/${a}`] },
+    neg: { f: (a) => -a, d: () => [-1], tex: ([a]) => `{-${a}}`, dtex: () => ["{-1}"] },
+    sigmoid: { f: (a) => 1 / (1 + Math.exp(-a)), d: (a) => { const q = 1 / (1 + Math.exp(-a)); return [q * (1 - q)]; }, tex: ([a]) => `\\sigma(${a})`, dtex: ([a]) => [`\\sigma(${a})(1 - \\sigma(${a}))`] },
+    tanh: { f: (a) => Math.tanh(a), d: (a) => [1 - Math.tanh(a) ** 2], tex: ([a]) => `\\tanh ${a}`, dtex: ([a]) => [`1 - \\tanh^2 ${a}`] },
+    relu: { f: (a) => Math.max(0, a), d: (a) => [a > 0 ? 1 : 0], tex: ([a]) => `\\max(0, ${a})`, dtex: (n, [a]) => [a > 0 ? "1" : "0"] },
+    sum: { f: (...a) => a.reduce((x, y) => x + y, 0), d: (...a) => a.map(() => 1), tex: (n) => n.join(" + "), dtex: (n) => n.map(() => "1") },
   };
+
+  // The small TeX subset the node labels use, as SVG text: ^ raises, _ lowers, commands become symbols.
+  function svgMath(tex) {
+    const src = String(tex).replace(/\\times/g, "×").replace(/\\cdot/g, "·").replace(/\\(ln|tanh|max|exp)\s*/g, "$1 ")
+      .replace(/\\sigma/g, "σ").replace(/\\partial\s*/g, "∂").replace(/\\operatorname\{([^}]*)\}/g, "$1").replace(/-/g, "−");
+    const runs = [];
+    let cur = "", i = 0;
+    const flush = () => { if (cur) runs.push([cur, 0]); cur = ""; };
+    while (i < src.length) {
+      const c = src[i];
+      if (c === "^" || c === "_") {
+        flush();
+        let g;
+        if (src[i + 1] === "{") {
+          let depth = 1, j = i + 2;
+          while (j < src.length && depth) { if (src[j] === "{") depth++; else if (src[j] === "}") depth--; j++; }
+          g = src.slice(i + 2, j - 1); i = j;
+        } else { g = src[i + 1] || ""; i += 2; }
+        runs.push([g.replace(/[{}]/g, ""), c === "^" ? 1 : -1]);
+      } else { if (c !== "{" && c !== "}") cur += c; i++; }
+    }
+    flush();
+    return runs;
+  }
+  // Scripts are set at 72% and shifted with dy, which counts in the tspan's own font size.
+  function svgText(attrs, tex) {
+    const t = s("text", attrs);
+    let at = 0; // current baseline offset, in em of the main text
+    for (const [str, k] of svgMath(tex)) {
+      const want = k === 1 ? -0.32 : k === -1 ? 0.2 : 0;
+      const dy = k ? (want - at) / 0.72 : want - at;
+      t.appendChild(s("tspan", { class: k ? "f-script" : null, dy: dy ? `${+dy.toFixed(3)}em` : null }, str));
+      at = want;
+    }
+    return t;
+  }
+
+  // Shared by every mode of the graph figure: number formats, TeX helpers, layout and drawing.
+  function graphKit(sp, BH) {
+    const dp = sp.dp ?? 3, BW = sp.bw || 108;
+    const short = (v) => { const r = Number(fix(v, dp)); return String(r === 0 ? 0 : r); };
+    const k = {
+      dp, BW, BH,
+      short,
+      show: (v) => fmt.minus(short(v)),
+      tn: (v) => (Number(fix(v, dp)) < 0 ? `{-${short(-v)}}` : short(v)),
+      T: (src) => `\\(${src}\\)`,
+      // a chain "a = b = c" as one formula per link, so a narrow line can wrap before each "="
+      TT: (src) => src.split(/(?= = )/).map((p) => `\\(${p.trim()}\\)`).join(" "),
+      // put trailing punctuation inside a closing inline formula, so a line cannot break before it
+      end: (str, p) => (str.endsWith("\\)") ? `${str.slice(0, -2)}${p}\\)` : str + p),
+      G: (name) => `\\operatorname{grad}(${name})`,
+      dn: (n, a) => `\\partial ${n}/\\partial ${a}`,
+    };
+    k.tnp = (v) => (Number(fix(v, dp)) < 0 ? `(${k.tn(v)})` : k.tn(v));
+    // Layout: node.x is the step from the inputs, node.y the lane. Across ("h") puts steps in
+    // columns; down ("v") puts them in rows, for narrow plates.
+    k.geometry = (o, list) => {
+      const c0 = Math.min(...list.map((n) => (o === "h" ? n.x : n.y))), r0 = Math.min(...list.map((n) => (o === "h" ? n.y : n.x)));
+      const col = (n) => (o === "h" ? n.x : n.y) - c0, row = (n) => (o === "h" ? n.y : n.x) - r0;
+      const cw = BW + (o === "h" ? 72 : 10), rh = BH + (o === "h" ? 30 : 58), PAD = o === "h" ? 14 : 8;
+      const W = Math.max(...list.map(col)) * cw + BW + 2 * PAD, H = Math.max(...list.map(row)) * rh + BH + 2 * PAD;
+      return { o, W, H, P: (n) => [PAD + BW / 2 + col(n) * cw, PAD + BH / 2 + row(n) * rh] };
+    };
+    // start a drawing; labels widen it if they reach past the nodes (fit sets the final viewBox)
+    k.begin = (svg, Gm) => {
+      clear(svg);
+      k.ext = { x0: 0, x1: Gm.W };
+      svg.appendChild(k.defs());
+    };
+    k.fit = (svg, Gm) => {
+      const { x0, x1 } = k.ext;
+      svg.setAttribute("viewBox", `${x0} 0 ${x1 - x0} ${Gm.H}`);
+      svg.style.maxWidth = `${x1 - x0}px`;
+    };
+    const uid = Math.random().toString(36).slice(2, 8);
+    k.defs = () => s("defs", null, ["ink", "on", "bw"].map((c) => s("marker", { id: `ga-${uid}-${c}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: "userSpaceOnUse", orient: "auto" },
+      s("path", { d: "M0,1 L10,5 L0,9 z", class: `f-ah ${c}` }))));
+    k.marker = (c) => `url(#ga-${uid}-${c})`;
+    // the visible part of the edge a → b, between the two boxes
+    k.seg = (Gm, a, b) => {
+      const [ax, ay] = Gm.P(a), [bx, by] = Gm.P(b);
+      const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      const cut = (pad) => Math.min(ux ? (BW / 2 + pad) / Math.abs(ux) : Infinity, uy ? (BH / 2 + pad) / Math.abs(uy) : Infinity);
+      const c0 = cut(1), c1 = cut(3);
+      return { x1: ax + ux * c0, y1: ay + uy * c0, x2: bx - ux * c1, y2: by - uy * c1, nx: -uy, ny: ux };
+    };
+    // a forward edge, optionally with its backward arrow (on one side) and a label (on the other)
+    // a forward edge, and its backward arrow (red, on the +normal side) while that edge is being crossed
+    k.edge = (svg, Gm, a, b, { cls = "", bw = false } = {}) => {
+      const e = k.seg(Gm, a, b);
+      svg.appendChild(s("line", { x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2, class: `f-edge ${cls}`, "marker-end": k.marker(cls === "on" ? "on" : "ink") }));
+      if (bw) {
+        const o = 5.5;
+        svg.appendChild(s("line", { x1: e.x2 + e.nx * o, y1: e.y2 + e.ny * o, x2: e.x1 + e.nx * o, y2: e.y1 + e.ny * o, class: "f-edge bw", "marker-end": k.marker("bw") }));
+      }
+    };
+    // Where each edge's label goes: beside the edge, on whichever side and at whichever point along it
+    // crosses no other line, no node and no earlier label. Every edge is placed, shown or not, so a
+    // label keeps its place as more of them appear.
+    const LH = 15, textW = (str) => str.length * 7.9 + 4;
+    const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+    const crosses = (sg, r) => { // Liang–Barsky: does the segment enter rectangle r?
+      let t0 = 0, t1 = 1;
+      const dx = sg.x2 - sg.x1, dy = sg.y2 - sg.y1;
+      const p = [-dx, dx, -dy, dy], q = [sg.x1 - r.l, r.r - sg.x1, sg.y1 - r.t, r.b - sg.y1];
+      for (let i = 0; i < 4; i++) {
+        if (p[i] === 0) { if (q[i] < 0) return false; continue; }
+        const t = q[i] / p[i];
+        if (p[i] < 0) { if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+      }
+      return true;
+    };
+    k.placeLabels = (Gm, list, edges) => {
+      const segs = edges.map((ed) => k.seg(Gm, ed.a, ed.b));
+      const boxes = list.map((n) => { const [cx, cy] = Gm.P(n); return { l: cx - BW / 2 - 5, r: cx + BW / 2 + 5, t: cy - BH / 2 - 4, b: cy + BH / 2 + 4 }; });
+      const taken = [];
+      return edges.map((ed, i) => {
+        if (!ed.text) return null;
+        const e = segs[i], w = textW(ed.text);
+        let best = null, bestCost = Infinity;
+        for (const t of [0.5, 0.38, 0.62, 0.28, 0.72]) for (const side of [-1, 1]) {
+          const lx = side * e.nx, ly = side * e.ny, off = side < 0 ? 11 : 20; // the backward arrow runs on the +1 side
+          const anchor = lx > 0.35 ? "start" : lx < -0.35 ? "end" : "middle";
+          const x = e.x1 + (e.x2 - e.x1) * t + lx * off, y = e.y1 + (e.y2 - e.y1) * t + ly * (anchor === "middle" ? off + 3 : off);
+          const left = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+          const r = { l: left, r: left + w, t: y - LH / 2, b: y + LH / 2 };
+          const cost = boxes.filter((bx) => hit(r, bx)).length * 4 + taken.filter((tr) => hit(r, tr)).length * 4 +
+            segs.filter((sg, j) => j !== i && crosses(sg, r)).length * 3 + (crosses(e, r) ? 2 : 0) + (r.l < 0 || r.r > Gm.W ? 1 : 0);
+          if (cost < bestCost) { best = { x, y, anchor, r }; bestCost = cost; }
+        }
+        taken.push(best.r);
+        return best;
+      });
+    };
+    k.label = (svg, at, text, cls = "") => {
+      svg.appendChild(s("text", { x: at.x, y: at.y, class: `f-edge-l ${cls}`, "text-anchor": at.anchor, "dominant-baseline": "central" }, text));
+      if (k.ext) { k.ext.x0 = Math.min(k.ext.x0, at.r.l - 2); k.ext.x1 = Math.max(k.ext.x1, at.r.r + 2); }
+    };
+    // a node box with two or three lines of text: label, value, and grad (or change)
+    k.node = (svg, Gm, n, cls, lines) => {
+      const [cx, cy] = Gm.P(n);
+      const g = s("g", { class: `f-node ${cls}` });
+      g.appendChild(s("rect", { x: cx - BW / 2, y: cy - BH / 2, width: BW, height: BH, rx: n.leaf ? 3 : 14 }));
+      const ys = BH >= 60 ? [-17, 2, 21] : [-9, 10];
+      lines.forEach((ln, i) => { if (ln && ln.tex !== "") g.appendChild(svgText({ x: cx, y: cy + ys[i], class: ln.cls, "text-anchor": "middle", "dominant-baseline": "central" }, ln.tex)); });
+      svg.appendChild(g);
+      return g;
+    };
+    k.slopeLabel = (v) => `×${v < 0 && Number(fix(v, dp)) < 0 ? `(${k.show(v)})` : k.show(v)}`;
+    return k;
+  }
+
+  // The graph figure. Modes: "step" (forward, then backward; the default), "fw" (forward only),
+  // "nudge" (raise one node by ε and recompute), "rule" (one operation's backward rule with sliders).
   F("graph", (el, sp) => {
+    const mode = sp.mode || "step";
+    if (mode === "rule") return graphRule(el, sp);
+    const kit = graphKit(sp, mode === "fw" ? 50 : 66);
+    const { show, tn, tnp, T, TT, G, dn, end } = kit;
     const nodes = sp.nodes.map((n) => Object.assign({}, n));
     const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    const dp = sp.dp ?? 3;
-    // forward values
     for (const n of nodes) {
       const op = OPS[n.op];
       if (!op) throw new Error("unknown op " + n.op);
-      n.val = op.d ? op.f(...n.in.map((i) => byId[i].val)) : n.value;
+      n.leaf = !op.f;
+      n.val = op.f ? op.f(...n.in.map((i) => byId[i].val)) : n.value;
     }
     const out = byId[sp.output || nodes[nodes.length - 1].id];
-    const order = nodes.filter((n) => OPS[n.op].d);
-    const bwOrder = [out].concat(order.slice().reverse().filter((n) => n !== out));
-    // gradients
+    const order = nodes.filter((n) => !n.leaf);
+    const lab = (n) => n.label || n.id;
+    const names = (n) => n.in.map((i) => lab(byId[i]));
+    const vals = (n) => n.in.map((i) => byId[i].val);
+    const formula = (n) => (n.leaf ? lab(n) : `${lab(n)} = ${OPS[n.op].tex(names(n))}`);
+    // "∂n/∂a = formula = formula with values = value", without repeats
+    const dChain = (n, t) => {
+      const op = OPS[n.op], v = vals(n);
+      const parts = [op.dtex(names(n), v)[t]];
+      if (op.dsub) parts.push(op.dsub(v.map(tnp))[t]);
+      parts.push(tn(op.d(...v)[t]));
+      return [dn(lab(n), lab(byId[n.in[t]]))].concat(parts.filter((p, i) => i === 0 || p !== parts[i - 1])).join(" = ");
+    };
+
+    // backward steps: reverse topological order, one per edge; grad of a value used twice accumulates
     nodes.forEach((n) => { n.grad = 0; });
     out.grad = 1;
     const bwSteps = [];
     for (const n of order.slice().reverse()) {
-      const local = OPS[n.op].d(...n.in.map((i) => byId[i].val));
+      const local = OPS[n.op].d(...vals(n));
       n.in.forEach((iid, t) => {
-        byId[iid].grad += n.grad * local[t];
-        bwSteps.push({ from: n, to: byId[iid], local: local[t], upstream: n.grad });
+        const a = byId[iid], before = a.grad;
+        a.grad += n.grad * local[t];
+        bwSteps.push({ from: n, to: a, t, local: local[t], upstream: n.grad, before, after: a.grad });
       });
     }
-    const steps = [{ kind: "start" }].concat(order.map((n) => ({ kind: "fw", n })), bwSteps.map((b) => ({ kind: "bw", b })));
-    let k = sp.start ?? 0;
-    const uid = Math.random().toString(36).slice(2, 8);
-    const GX = sp.gx || 120, GY = sp.gy || 78, BW = sp.bw || 96, BH = 46;
-    const maxX = Math.max(...nodes.map((n) => n.x)), maxY = Math.max(...nodes.map((n) => n.y));
-    const Wd = (maxX + 1) * GX + 10, Hd = (maxY + 1) * GY + 10;
-    const P = (n) => [n.x * GX + GX / 2 + 5, n.y * GY + GY / 2 + 5];
-    const svg = s("svg", { viewBox: `0 0 ${Wd} ${Hd}`, class: "f-graph", role: "img", "aria-label": sp.aria || "computation graph" });
-    svg.appendChild(s("defs", null, s("marker", { id: `ga-${uid}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" }, s("path", { d: "M0,0 L10,5 L0,10 z", class: "f-ah" }))));
-    el.appendChild(h("div", { class: "scroll-x" }, svg));
+    bwSteps.forEach((b) => {
+      const into = bwSteps.filter((x) => x.to === b.to);
+      b.paths = into.length; b.path = into.indexOf(b) + 1;
+    });
+    const steps = [{ kind: "start" }].concat(order.map((n) => ({ kind: "fw", n })), mode === "fw" ? [] : bwSteps.map((b) => ({ kind: "bw", b })));
+    let k = Math.min(sp.start ?? 0, steps.length - 1);
+
+    const plain = (tex) => svgMath(tex).map((r) => r[0]).join("");
+    const svg = s("svg", { class: "f-graph", role: "img", "aria-label": sp.aria || `computation graph: ${order.map((n) => plain(formula(n))).join("; ")}` });
+    const wrap = h("div", { class: "f-graph-wrap" }, svg);
     const expl = h("p", { class: "f-graph-expl", "aria-live": "polite" });
-    el.appendChild(expl);
-    const lab = (n) => n.label || n.id;
-    function draw() {
-      clear(svg);
-      svg.appendChild(s("defs", null, s("marker", { id: `ga-${uid}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" }, s("path", { d: "M0,0 L10,5 L0,10 z", class: "f-ah" }))));
-      const cur = steps[k];
-      const fwDone = new Set(steps.slice(1, k + 1).filter((x) => x.kind === "fw").map((x) => x.n.id));
-      const showVal = (n) => !OPS[n.op].d || fwDone.has(n.id);
-      const gradShown = new Map();
-      steps.slice(1, k + 1).filter((x) => x.kind === "bw").forEach((x) => { gradShown.set(x.b.to.id, (gradShown.get(x.b.to.id) || 0) + x.b.upstream * x.b.local); gradShown.set(x.b.from.id, x.b.from.grad); });
-      if (steps.slice(1, k + 1).some((x) => x.kind === "bw") || (cur && cur.kind === "bw")) gradShown.set(out.id, 1);
-      for (const n of nodes) for (const iid of n.in || []) {
-        const a = P(byId[iid]), b = P(n);
-        const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
-        const ux = dx / L, uy = dy / L;
-        const sx = a[0] + ux * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2), sy = a[1] + uy * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2);
-        const ex = b[0] - ux * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2 + 3), ey = b[1] - uy * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2 + 3);
-        const activeBw = cur && cur.kind === "bw" && cur.b.from === n && cur.b.to.id === iid;
-        svg.appendChild(s("line", { x1: sx, y1: sy, x2: ex, y2: ey, class: "f-edge" + (activeBw ? " bw" : ""), "marker-end": `url(#ga-${uid})` }));
-        if (activeBw) svg.appendChild(s("text", { x: (sx + ex) / 2, y: (sy + ey) / 2 - 6, class: "f-edge-l", "text-anchor": "middle" }, `×${num(cur.b.local, 2)}`));
-      }
-      for (const n of nodes) {
-        const [cx, cy] = P(n);
-        const isCur = cur && ((cur.kind === "fw" && cur.n === n) || (cur.kind === "bw" && (cur.b.to === n)));
-        const g = s("g", { class: "f-node" + (OPS[n.op].d ? "" : " leaf") + (n.op === "param" ? " param" : "") + (isCur ? " cur" : "") + (n === out ? " out" : "") });
-        g.appendChild(s("rect", { x: cx - BW / 2, y: cy - BH / 2, width: BW, height: BH, rx: OPS[n.op].d ? 23 : 3 }));
-        g.appendChild(s("text", { x: cx, y: cy - 7, class: "f-node-l", "text-anchor": "middle" }, OPS[n.op].d ? `${lab(n)} = ${OPS[n.op].sym}` : lab(n)));
-        g.appendChild(s("text", { x: cx, y: cy + 9, class: "f-node-v", "text-anchor": "middle" }, showVal(n) ? num(n.val, dp) : "?"));
-        if (gradShown.has(n.id)) g.appendChild(s("text", { x: cx, y: cy + BH / 2 + 13, class: "f-node-g", "text-anchor": "middle" }, `grad ${num(gradShown.get(n.id), dp)}`));
-        svg.appendChild(g);
-      }
-      if (!cur || cur.kind === "start") expl.innerHTML = sp.intro || "Press <b>Forward step</b> to compute each node from its inputs, then <b>Backward step</b> to send the gradient back.";
-      else if (cur.kind === "fw") {
-        const n = cur.n, args = n.in.map((i) => num(byId[i].val, dp));
-        expl.innerHTML = `<b>Forward.</b> ${lab(n)} = ${OPS[n.op].show(n, ...n.in.map((i) => lab(byId[i])))} = ${OPS[n.op].show(n, ...args)} = <b>${num(n.val, dp)}</b>`;
-      } else {
-        // the running total and the local factor get different names: they are different numbers
-        const b = cur.b;
-        const total = steps.slice(1, k + 1).filter((x) => x.kind === "bw" && x.b.to === b.to).reduce((a, x) => a + x.b.upstream * x.b.local, 0);
-        const paths = bwSteps.filter((x) => x.to === b.to).length;
-        expl.innerHTML = `<b>Backward.</b> grad(${lab(b.to)}) += grad(${lab(b.from)}) × local slope ∂${lab(b.from)}/∂${lab(b.to)} = ${num(b.upstream, dp)} × ${num(b.local, dp)} = <b>${num(b.upstream * b.local, dp)}</b>` +
-          (paths > 1 ? `. ${lab(b.to)} feeds ${paths} paths; running total grad(${lab(b.to)}) = <b>${num(total, dp)}</b>.` : ".") +
-          ` Here grad(v) means ∂${lab(out)}/∂v.`;
-      }
-      fwBtn.disabled = k >= order.length; bwBtn.disabled = k >= steps.length - 1;
+    const ledger = h("div", { class: "f-graph-ledger scroll-x" });
+    const box = h("div", { class: "f-graph-fig", style: { maxWidth: `${Math.max(kit.geometry("h", nodes).W, 640)}px` } }, wrap, expl);
+    el.appendChild(box);
+    let orient = null;
+    const pick = () => {
+      const w = wrap.clientWidth || (window.innerWidth < 700 ? 340 : 820);
+      return w >= 0.8 * kit.geometry("h", nodes).W ? "h" : "v";
+    };
+
+    // ---------------------------------------------------------------- nudge: raise one node by ε
+    if (mode === "nudge") {
+      const ns = sp.nudge || {};
+      const cands = (ns.nodes || nodes.filter((n) => n !== out).map((n) => n.id)).map((id) => byId[id]);
+      let pickN = byId[ns.node] || cands[0], eps = ns.eps ?? 0.001;
+      const sigA = (v) => v.toPrecision(5), sig = (v) => fmt.minus(sigA(v));
+      const sigT = (v) => (v < 0 ? `{-${sigA(-v)}}` : sigA(v));
+      const six = (v) => fmt.minus(String(Number(v.toFixed(6))));
+      const rerun = (target, delta) => {
+        const v = new Map();
+        for (const n of nodes) v.set(n.id, (n.leaf ? n.val : OPS[n.op].f(...n.in.map((i) => v.get(i)))) + (n === target ? delta : 0));
+        return v;
+      };
+      const after = (target) => {
+        const set = new Set([target.id]);
+        for (const n of nodes) if (!n.leaf && n.in.some((i) => set.has(i))) set.add(n.id);
+        return set;
+      };
+      const ctl = h("div", { class: "f-ctl" },
+        segmented({ label: "raise", value: pickN.id, options: cands.map((n) => ({ label: lab(n), value: n.id })), onChange: (v) => { pickN = byId[v]; draw(); } }),
+        segmented({ label: "by ε", value: eps, options: (ns.epsOptions || [0.1, 0.01, 0.001, 0.0001]).map((e) => ({ label: String(e), value: e })), onChange: (v) => { eps = v; draw(); } }));
+      box.append(ctl, ledger);
+      const draw = () => {
+        orient = pick();
+        const Gm = kit.geometry(orient, nodes);
+        kit.begin(svg, Gm);
+        const v = rerun(pickN, eps), moved = after(pickN);
+        for (const n of nodes) for (const iid of n.in || []) kit.edge(svg, Gm, byId[iid], n, { cls: moved.has(iid) && moved.has(n.id) ? "on" : "" });
+        for (const n of nodes) {
+          const m = moved.has(n.id);
+          kit.node(svg, Gm, n, [n.leaf ? "leaf" : "", n.op === "param" ? "param" : "", n === out ? "out" : "", n === pickN ? "nudged" : m ? "moved" : "still"].join(" "), [
+            { tex: formula(n), cls: "f-node-l" },
+            { tex: m ? six(v.get(n.id)) : show(n.val), cls: "f-node-v" },
+            m ? { tex: `${v.get(n.id) - n.val >= 0 ? "+" : ""}${sig(v.get(n.id) - n.val)}`, cls: "f-node-d" } : null,
+          ]);
+        }
+        kit.fit(svg, Gm);
+        const dy = v.get(out.id) - out.val, a = lab(pickN), y = lab(out);
+        const dec = Math.min(11, Math.max(6, Math.ceil(-Math.log10(Math.abs(dy))) + 4)), yv = (val) => fmt.minus(val.toFixed(dec));
+        expl.replaceChildren(html(`Raise ${T(a)} by ${T(`\\varepsilon = ${eps}`)}, from ${show(pickN.val)} to ${six(pickN.val + eps)}, and recompute only the nodes computed from it; every other node keeps its value. ` +
+          `${T(y)} moves from ${yv(out.val)} to ${yv(v.get(out.id))}, so ` +
+          `${T(`\\Delta ${y} = ${sigT(dy)}`)} and ${end(T(`\\Delta ${y}/\\varepsilon = ${sigT(dy / eps)}`), ".")}`));
+        clear(ledger);
+        const t = h("table", { class: "f-table dense" });
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "raise"), h("th", { class: "r" }, html(T(`\\Delta ${y}`))), h("th", { class: "r" }, html(T(`\\Delta ${y}/\\varepsilon`))))));
+        t.appendChild(h("tbody", null, cands.map((n) => {
+          const d = rerun(n, eps).get(out.id) - out.val;
+          return h("tr", { class: n === pickN ? "is-cur fw" : "" }, h("td", null, html(`${T(lab(n))} by ${eps}`)), h("td", { class: "r" }, sig(d)), h("td", { class: "r" }, h("b", null, sig(d / eps))));
+        })));
+        ledger.appendChild(t);
+      };
+      return mountGraph(wrap, draw, () => orient, pick);
     }
+
+    // ---------------------------------------------------------------- step: forward, then backward
     const fwBtn = button("Forward step ▸", () => { if (k < order.length) { k++; draw(); } }, { kind: "primary" });
-    const bwBtn = button("Backward step ◂", () => { if (k < order.length) k = order.length; if (k < steps.length - 1) k++; draw(); });
-    el.appendChild(h("div", { class: "f-ctl" }, button("Reset", () => { k = 0; draw(); }), fwBtn, bwBtn, button("Show all", () => { k = steps.length - 1; draw(); })));
-    draw();
+    const bwBtn = mode === "fw" ? null : button("Backward step ◂", () => { if (k < order.length) k = order.length; if (k < steps.length - 1) k++; draw(); }, { kind: "primary" });
+    box.append(h("div", { class: "f-ctl" }, button("Reset", () => { k = 0; draw(); }), fwBtn, bwBtn, button("Show all", () => { k = steps.length - 1; draw(); })), ledger);
+    const ledgerMode = sp.ledger ?? (mode === "fw" ? "fw" : "bw");
+
+    function draw() {
+      orient = pick();
+      const Gm = kit.geometry(orient, nodes);
+      kit.begin(svg, Gm);
+      const cur = steps[k];
+      const done = steps.slice(1, k + 1);
+      const fwDone = new Set(done.filter((x) => x.kind === "fw").map((x) => x.n.id));
+      const bwDone = done.filter((x) => x.kind === "bw").map((x) => x.b);
+      const grads = new Map();
+      if (bwDone.length) grads.set(out.id, 1);
+      bwDone.forEach((b) => grads.set(b.to.id, b.after));
+      const edges = [];
+      for (const n of nodes) (n.in || []).forEach((iid, t) => edges.push({ a: byId[iid], b: n, t, text: mode === "fw" ? null : kit.slopeLabel(OPS[n.op].d(...vals(n))[t]) }));
+      const at = kit.placeLabels(Gm, nodes, edges);
+      const labels = [];
+      edges.forEach((ed, i) => {
+        const bwNow = cur.kind === "bw" && cur.b.from === ed.b && cur.b.to === ed.a && cur.b.t === ed.t;
+        const crossed = bwDone.some((b) => b.from === ed.b && b.to === ed.a && b.t === ed.t);
+        kit.edge(svg, Gm, ed.a, ed.b, { cls: cur.kind === "fw" && cur.n === ed.b ? "on" : "", bw: bwNow });
+        if (crossed) labels.push([at[i], ed.text, bwNow ? "is-cur" : ""]);
+      });
+      for (const n of nodes) {
+        const known = n.leaf || fwDone.has(n.id);
+        const cls = [n.leaf ? "leaf" : "", n.op === "param" ? "param" : "", n === out ? "out" : "",
+          cur.kind === "fw" && cur.n === n ? "fw-cur" : "", cur.kind === "bw" && cur.b.to === n ? "bw-cur" : "", cur.kind === "bw" && cur.b.from === n ? "bw-src" : ""].join(" ");
+        const lines = [{ tex: formula(n), cls: "f-node-l" }, { tex: known ? show(n.val) : "?", cls: "f-node-v" }];
+        if (mode !== "fw") lines.push({ tex: grads.has(n.id) ? `grad ${show(grads.get(n.id))}` : "", cls: "f-node-g" });
+        kit.node(svg, Gm, n, cls, lines);
+      }
+      labels.forEach(([p, text, cls]) => kit.label(svg, p, text, cls));
+      kit.fit(svg, Gm);
+      expl.replaceChildren(html(explain(cur)));
+      fwBtn.disabled = k >= order.length;
+      if (bwBtn) bwBtn.disabled = k >= steps.length - 1;
+      drawLedger(cur, fwDone, bwDone);
+    }
+
+    function explain(cur) {
+      if (cur.kind === "start") return sp.intro || (mode === "fw"
+        ? "Only the inputs are known. <b>Forward step</b> computes one node from the values on its incoming edges."
+        : "Only the inputs are known. <b>Forward step</b> computes the nodes in order; <b>Backward step</b> then computes one grad per edge, from the output back.");
+      if (cur.kind === "fw") {
+        const n = cur.n, i = order.indexOf(n) + 1;
+        const f = TT(`${formula(n)} = ${OPS[n.op].tex(vals(n).map(tnp))} = ${tn(n.val)}`);
+        return `<b>Forward ${i}/${order.length}.</b> ` + (i === order.length ? `${end(f, ",")} the output.` : end(f, "."));
+      }
+      const b = cur.b, n = lab(b.from), a = lab(b.to), j = bwSteps.indexOf(b) + 1;
+      const s0 = b.local, dt = OPS[b.from.op].dtex(names(b.from), vals(b.from))[b.t];
+      let how;
+      if (s0 === 1 && dt === "1") how = `a small change in ${T(a)} changes ${T(n)} by the same amount: ${T(`${dn(n, a)} = 1`)}`;
+      else if (s0 === -1 && dt === "{-1}") how = `a small change in ${T(a)} changes ${T(n)} by the same amount in the opposite direction: ${T(`${dn(n, a)} = {-1}`)}`;
+      else if (s0 === 0) how = `a small change in ${T(a)} does not change ${T(n)}: ${T(`${dn(n, a)} = 0`)}`;
+      else how = `a small change in ${T(a)} changes ${T(n)} by ${T(dt)} times as much: ${TT(dChain(b.from, b.t))}`;
+      const term = `${tn(b.upstream)} \\times ${tnp(b.local)}`;
+      let res;
+      if (b.paths > 1 && b.path > 1) res = `Use ${b.path} of ${b.paths} of ${T(a)} adds its term: ${TT(`${G(a)} = ${tn(b.before)} + ${term} = ${tn(b.after)}`)}`;
+      else if (b.paths > 1) res = `${T(a)} is used ${b.paths} times, so ${T(G(a))} is a sum with one term per use. This use gives ${TT(`${G(n)} \\times ${dn(n, a)} = ${term} = ${tn(b.after)}`)}`;
+      else res = TT(`${G(a)} = ${G(n)} \\times ${dn(n, a)} = ${term} = ${tn(b.after)}`);
+      return `<b>Backward ${j}/${bwSteps.length}.</b> ${end(T(formula(b.from)), ",")} so ${end(how, ".")}<br>${end(res, ".")}`;
+    }
+
+    function drawLedger(cur, fwDone, bwDone) {
+      clear(ledger);
+      if (!ledgerMode) return;
+      if (ledgerMode === "fw" || ledgerMode === "both") {
+        const t = h("table", { class: "f-table dense fw" });
+        const rows = order.filter((n) => fwDone.has(n.id));
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "forward"), h("th", null, "computation"), h("th", { class: "r" }, "value"))));
+        t.appendChild(h("tbody", null, rows.length ? rows.map((n) => h("tr", { class: cur.kind === "fw" && cur.n === n ? "is-cur fw" : "" },
+          h("td", null, html(T(lab(n)))), h("td", null, html(T(`${OPS[n.op].tex(names(n))} = ${OPS[n.op].tex(vals(n).map(tnp))}`))), h("td", { class: "r" }, h("b", null, show(n.val)))))
+          : h("tr", null, h("td", { colspan: 3, class: "f-ledger-empty" }, "Each forward step adds a row."))));
+        ledger.appendChild(t);
+      }
+      if (ledgerMode === "bw" || ledgerMode === "both") {
+        const t = h("table", { class: "f-table dense bw" });
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "grad of"), h("th", null, "local derivative"), h("th", null, html(`grad of the node it feeds × local derivative`)))));
+        const rows = bwDone.map((b) => {
+          const n = lab(b.from), a = lab(b.to);
+          const prod = b.path > 1 ? `${tn(b.before)} + ${tn(b.upstream)} \\times ${tnp(b.local)} = ${tn(b.after)}` : `${tn(b.upstream)} \\times ${tnp(b.local)} = ${tn(b.after)}`;
+          return h("tr", { class: cur.kind === "bw" && cur.b === b ? "is-cur" : "" },
+            h("td", null, html(T(G(a)))), h("td", null, html(T(dChain(b.from, b.t)))), h("td", null, html(T(prod) + (b.paths > 1 ? ` <span class="f-ledger-note">use ${b.path} of ${b.paths}</span>` : ""))));
+        });
+        if (bwDone.length) rows.unshift(h("tr", null, h("td", null, html(T(G(lab(out))))), h("td", { class: "f-ledger-note" }, "start"), h("td", null, html(T("1")))));
+        t.appendChild(h("tbody", null, rows.length ? rows : h("tr", null, h("td", { colspan: 3, class: "f-ledger-empty" }, "Each backward step adds a row."))));
+        ledger.appendChild(t);
+      }
+    }
+    return mountGraph(wrap, draw, () => orient, pick);
   });
+
+  // Draw now, and again whenever the plate's width calls for the other orientation.
+  function mountGraph(wrap, draw, current, pick) {
+    draw();
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => { if (wrap.clientWidth && pick() !== current()) draw(); }).observe(wrap);
+    return { enter() { if (wrap.clientWidth && pick() !== current()) draw(); } };
+  }
+
+  // One operation's backward rule: its inputs, the grad arriving from the rest of the graph,
+  // and what each input receives. Sliders move the inputs.
+  function graphRule(el, sp) {
+    const kit = graphKit(sp, 66);
+    const { show, tn, tnp, T, TT, G, dn, end } = kit;
+    let r = sp.start ?? 0, vals = null;
+    const svg = s("svg", { class: "f-graph", role: "img", "aria-label": "one operation and the grads it sends back" });
+    const wrap = h("div", { class: "f-graph-wrap" }, svg);
+    const expl = h("p", { class: "f-graph-expl", "aria-live": "polite" });
+    const sliders = h("div", { class: "f-ctl sliders" });
+    const layoutNodes = (q) => {
+      const ins = q.names.map((nm, i) => ({ id: `in${i}`, label: nm, leaf: true, x: 0, y: q.names.length === 1 ? 0.5 : i }));
+      return ins.concat([{ id: "op", label: q.out, x: 1, y: 0.5 }], q.rest === false ? [] : [{ id: "rest", label: "rest", x: 2, y: 0.5, rest: true }]);
+    };
+    const ledger = h("div", { class: "f-graph-ledger scroll-x" });
+    el.append(h("div", { class: "f-graph-fig", style: { maxWidth: `${Math.max(...sp.rules.map((q) => kit.geometry("h", layoutNodes(q)).W), 640)}px` } }, wrap, expl,
+      h("div", { class: "f-ctl" }, segmented({ label: "operation", value: r, options: sp.rules.map((q, i) => ({ label: q.label, value: i })), onChange: (v) => { r = v; reset(); } })),
+      sliders, ledger));
+    let orient = null;
+    const pick = () => {
+      const w = wrap.clientWidth || (window.innerWidth < 700 ? 340 : 820);
+      return w >= 0.8 * kit.geometry("h", layoutNodes(sp.rules[r])).W ? "h" : "v";
+    };
+    function reset() {
+      const q = sp.rules[r];
+      vals = q.values.slice();
+      clear(sliders);
+      q.names.forEach((nm, i) => {
+        const [lo, hi, st] = q.ranges[i];
+        sliders.appendChild(slider({ label: nm, min: lo, max: hi, step: st, value: vals[i], format: (v) => show(v), onInput: (v) => { vals[i] = v; draw(); } }));
+      });
+      draw();
+    }
+    function draw() {
+      const q = sp.rules[r], op = OPS[q.op], list = layoutNodes(q);
+      orient = pick();
+      const Gm = kit.geometry(orient, list);
+      kit.begin(svg, Gm);
+      const outV = op.f(...vals), local = op.d(...vals), g = q.g;
+      const ins = list.filter((n) => n.leaf), opN = list.find((n) => n.id === "op"), rest = list.find((n) => n.rest);
+      const at = kit.placeLabels(Gm, list, ins.map((a, i) => ({ a, b: opN, text: kit.slopeLabel(local[i]) })));
+      ins.forEach((a) => kit.edge(svg, Gm, a, opN, { bw: true }));
+      if (rest) kit.edge(svg, Gm, opN, rest, { bw: true });
+      ins.forEach((a, i) => kit.node(svg, Gm, a, "leaf bw-cur", [{ tex: a.label, cls: "f-node-l" }, { tex: show(vals[i]), cls: "f-node-v" }, { tex: `grad ${show(g * local[i])}`, cls: "f-node-g" }]));
+      kit.node(svg, Gm, opN, rest ? "bw-src" : "bw-src out", [{ tex: `${q.out} = ${op.tex(q.names)}`, cls: "f-node-l" }, { tex: show(outV), cls: "f-node-v" }, { tex: `grad ${show(g)}`, cls: "f-node-g" }]);
+      if (rest) kit.node(svg, Gm, rest, "rest", [{ tex: "rest of graph", cls: "f-node-l" }, { tex: `→ ${sp.output || "y"}`, cls: "f-node-v" }, null]);
+      ins.forEach((a, i) => kit.label(svg, at[i], kit.slopeLabel(local[i]), "is-cur"));
+      kit.fit(svg, Gm);
+      const each = q.names.map((a, i) => TT(`${G(a)} = ${G(q.out)} \\times ${dn(q.out, a)} = ${tn(g)} \\times ${tnp(local[i])} = ${tn(g * local[i])}`));
+      expl.replaceChildren(html(`${q.say ? q.say : ""}${each.map((e, i) => `<br>${end(e, i < each.length - 1 ? ";" : ".")}`).join("")}`));
+      clear(ledger);
+      const t = h("table", { class: "f-table dense bw" });
+      t.appendChild(h("thead", null, h("tr", null, h("th", null, "grad of"), h("th", null, "local derivative"), h("th", null, `grad(${q.out}) × local derivative`))));
+      const vn = q.names, dts = op.dtex(vn, vals), dsubs = op.dsub ? op.dsub(vals.map(tnp)) : null;
+      t.appendChild(h("tbody", null, vn.map((a, i) => {
+        const parts = [dts[i]].concat(dsubs ? [dsubs[i]] : [], [tn(local[i])]).filter((p, j, arr) => j === 0 || p !== arr[j - 1]);
+        return h("tr", null, h("td", null, html(T(G(a)))), h("td", null, html(T(`${dn(q.out, a)} = ${parts.join(" = ")}`))), h("td", null, html(T(`${tn(g)} \\times ${tnp(local[i])} = ${tn(g * local[i])}`))));
+      })));
+      ledger.appendChild(t);
+    }
+    reset();
+    return mountGraph(wrap, draw, () => orient, pick);
+  }
 
   // ------------------------------------------------------------ network: a small MLP, forward pass with numbers
   const ACT = {
@@ -8835,34 +9223,97 @@ window.WIDGET_TEMPLATES = {
         { v: "y", tex: "\\ln v", f: (v) => Math.log(v), df: (v) => 1 / v, dtex: "1/v", ddp: 4 },
       ],
     },
-    terms: [{ term: "Local derivative", def: "The derivative of one stage of a computation with respect to its own input, evaluated at the value that stage received." }],
+    terms: [{ term: "Local derivative", def: "The derivative of one operation of a computation with respect to one of its inputs, the others held fixed, evaluated at the values the operation received." }],
   });
+
+  // y = ln((w x + b)^2) at w = 3, x = 1, b = 1: the three-stage chain with its 3 and 1 named
+  const GRAPH_WXB = [
+    { id: "w", op: "param", value: 3, x: 0, y: 0 },
+    { id: "x", op: "input", value: 1, x: 0, y: 1 },
+    { id: "b", op: "param", value: 1, x: 0, y: 2 },
+    { id: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 },
+    { id: "u", op: "add", in: ["m", "b"], x: 2, y: 1 },
+    { id: "v", op: "square", in: ["u"], x: 3, y: 1 },
+    { id: "y", op: "log", in: ["v"], x: 4, y: 1 },
+  ];
 
   Deck.slide({
     id: "math-graph",
-    title: "A computation is a graph, evaluated forward and then backward",
-    body: String.raw`<p>Write every elementary operation as a node and every value it uses as an incoming edge. The result is a <b>computational graph</b>. The plate draws \(y = \ln((wx + b)^2)\) with \(w = 3,\) \(b = 1\) and \(x = 1\): the chain of the last sheet, with the 3 and the 1 named as parameters, the way a model's numbers are.</p>
-<p>The <b>forward pass</b> evaluates the nodes from inputs to output: \(m = 3,\) \(u = 4,\) \(v = 16,\) \(y = 2.7726.\) The <b>backward pass</b> starts from slope 1 at the output and walks the edges in reverse, multiplying by each node's local derivative: \(1 \times 0.0625 \times 8 = 0.5\) reaches \(u.\)</p>
-<p>From \(u\) the derivative passes along both incoming edges. It reaches \(b\) as 0.5 and \(m\) as 0.5. From \(m = w \cdot x\) it reaches \(w\) as \(0.5 \times x = 0.5\) and \(x\) as \(0.5 \times w = 1.5,\) the slope of the last sheet. One backward pass gives the derivative of the output with respect to every input.</p>
-<p>The plate writes grad(v) for the derivative of \(y\) with respect to a node \(v,\) and \(\partial v/\partial u\) for the local slope from \(u\) to \(v;\) \(\partial\) marks a derivative with respect to one of several inputs (chapter 1.4).</p>`,
+    title: "A computation is a graph of small operations, evaluated forward",
+    layout: "wide",
+    body: String.raw`<p>Split a formula into elementary operations. Draw each operation as a rounded box and each given number as a square box, with an edge from every value to each operation that uses it. The result is a <b>computational graph</b>. The plate draws \(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1\) and \(b = 1\): the three-stage chain of the last sheet, with its 3 and 1 given the names \(w\) and \(b.\) Models name their numbers the same way: \(w\) and \(b\) are parameters (blue), the numbers training changes, and \(x\) is an input.</p>
+<p>The graph has four operations: \(m = w \times x,\) \(u = m + b,\) \(v = u^2\) and \(y = \ln v.\) The <b>forward pass</b> evaluates them in order, each as soon as its inputs are known: \(m = 3,\) \(u = 4,\) \(v = 16\) and \(y = \ln 16 = 2.7726.\)</p>
+<p>The forward pass keeps every intermediate value, because the derivatives need them: the slope of \(v = u^2\) is \(2u,\) and it can be evaluated only because \(u = 4\) was kept. The next three sheets find the derivative of \(y\) with respect to every node.</p>`,
     fig: {
-      type: "graph", caption: String.raw`<span>\(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1,\) \(b = 1,\) after the forward pass. Step backward, or reset and step forward.</span>`,
-      dp: 4, gx: 122, gy: 82, bw: 98, start: 4,
-      nodes: [
-        { id: "w", op: "param", value: 3, x: 0, y: 0 },
-        { id: "x", op: "input", value: 1, x: 0, y: 1 },
-        { id: "b", op: "param", value: 1, x: 0, y: 2 },
-        { id: "m", label: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 },
-        { id: "u", label: "u", op: "add", in: ["m", "b"], x: 2, y: 1 },
-        { id: "v", label: "v", op: "square", in: ["u"], x: 3, y: 1 },
-        { id: "y", label: "y", op: "log", in: ["v"], x: 4, y: 1 },
-      ],
+      type: "graph", mode: "fw", dp: 4, start: 0, nodes: GRAPH_WXB,
+      caption: String.raw`<span>\(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1,\) \(b = 1.\) Square boxes are given numbers (blue: parameters), rounded boxes are operations, the thick box is the output. Each forward step computes one node from its incoming edges and adds a row to the table.</span>`,
     },
     terms: [
-      { term: "Computational graph", def: "A computation drawn as nodes (operations) and edges (the values they use). Evaluated forward for values and backward for derivatives." },
+      { term: "Computational graph", def: "A computation drawn as nodes (given numbers and operations) and edges (from each value to the operations that use it). Evaluated forward for values and backward for derivatives." },
       { term: "Forward pass", def: "Evaluating a computational graph from its inputs to its output, keeping every intermediate value." },
-      { term: "Backward pass", def: "Walking a computational graph from the output back to the inputs, multiplying local derivatives, to get the derivative of the output with respect to every input." },
     ],
+  });
+
+  Deck.slide({
+    id: "math-grad",
+    title: "grad(n) is how much the output moves per unit change of node n",
+    layout: "wide",
+    body: String.raw`<p>Training needs one number per parameter: how much the output changes when that parameter changes a little. The backward pass needs the same number for every node, because a parameter's number is built from those of the nodes after it. Call it the <b>grad</b> of node \(n,\) written \(\operatorname{grad}(n):\) when \(n\) rises by a small amount \(\varepsilon\) and every value not computed from \(n\) stays the same, the output rises by about \(\operatorname{grad}(n) \times \varepsilon.\) It is the derivative of the output with respect to \(n.\) PyTorch stores it next to each parameter, in a field named <code>.grad</code>.</p>
+<p>It can be measured. Raise \(w\) from 3 to 3.001 and run the forward pass again: \(m = 3.001,\) \(u = 4.001,\) \(v = 16.008001,\) and \(y\) rises by 0.00049994. The ratio is \(0.00049994/0.001 = 0.49994.\) Raising \(x\) by 0.001 instead gives 1.4994. As \(\varepsilon\) shrinks the two ratios settle at 0.5 and 1.5, so \(\operatorname{grad}(w) = 0.5\) and \(\operatorname{grad}(x) = 1.5.\) To raise an intermediate node such as \(u,\) overwrite its value (4 becomes 4.001) and recompute only the nodes after it; \(m\) and \(b\) keep their values.</p>
+<p>Measuring costs one extra forward pass per node, 6 here, and the ratio is never exact. The backward pass on the next sheet gets all 6 grads exactly, with one multiplication per edge.</p>`,
+    fig: {
+      type: "graph", mode: "nudge", dp: 4, nodes: GRAPH_WXB, nudge: { nodes: ["w", "x", "b", "m", "u", "v"], node: "w", eps: 0.001 },
+      caption: String.raw`<span>Raise one node by \(\varepsilon\): it and the nodes computed from it change; every other node keeps its value. The table lists \(\Delta y/\varepsilon\) for every node at the chosen \(\varepsilon.\)</span>`,
+    },
+    terms: [{ term: "grad(n)", def: "The derivative of a computation's output with respect to node n: the output rises by about grad(n) × ε when n rises by a small ε. PyTorch stores it next to each parameter, in a field named .grad." }],
+    check: {
+      q: String.raw`Raising \(b\) from 1 to 1.01 raises \(y\) from 2.7726 to 2.7776. Which number is closest to \(\operatorname{grad}(b)\)?`,
+      options: ["0.5", "0.005", "2.7776", "0.01"],
+      answer: 0,
+      why: String.raw`\(\Delta y = 2.7775825 - 2.7725887 = 0.0049938\) and \(\Delta y/\varepsilon = 0.0049938/0.01 = 0.49938,\) close to 0.5. The 0.005 is \(\Delta y\) before dividing by \(\varepsilon = 0.01,\) and 2.7776 is the new \(y.\)`,
+    },
+  });
+
+  Deck.slide({
+    id: "math-backward",
+    title: "The backward pass finds every grad from the output back, one edge at a time",
+    layout: "wide",
+    body: String.raw`<p>The <b>backward pass</b> visits the operations in the reverse of the forward order: \(y,\) \(v,\) \(u,\) \(m.\) It starts with \(\operatorname{grad}(y) = 1,\) since raising \(y\) by \(\varepsilon\) raises \(y\) by \(\varepsilon,\) then crosses each edge once, from a node \(n\) back to an input \(a.\)</p>
+<p>That edge's local derivative \(\partial n/\partial a\) is how much \(n\) moves per unit change of \(a,\) from \(n\)'s own formula at the values the forward pass kept (\(\partial\) marks a derivative with respect to one input, the others fixed; chapter 1.4). A small change \(\varepsilon\) in \(a\) moves \(n\) by \(\varepsilon \times \partial n/\partial a,\) and \(y\) by \(\operatorname{grad}(n)\) times that:</p>
+\[\operatorname{grad}(a) = \operatorname{grad}(n) \times \frac{\partial n}{\partial a}\]
+<p>This holds when \(a\) feeds only \(n;\) a value used by several operations gets one such term from each (two sheets on). The reverse order makes every user of \(n\) send its term before \(n\) sends its grad on.</p>
+<p>At \(y = \ln v\): \(\partial y/\partial v = 1/v = 0.0625,\) so \(\operatorname{grad}(v) = 0.0625.\) At \(v = u^2\): \(\partial v/\partial u = 2u = 8,\) so \(\operatorname{grad}(u) = 0.0625 \times 8 = 0.5,\) the value the last sheet's ratio for \(u\) (0.49994) approaches. These are the chain rule's products, built from the output end: \(1,\) then \(0.0625,\) then \(0.5.\)</p>`,
+    fig: {
+      type: "graph", dp: 4, start: 4, nodes: GRAPH_WXB,
+      caption: String.raw`<span>After the forward pass. Each backward step crosses one edge: the dashed node sends its grad back along the red arrow, the filled node receives it times the local derivative, and the table adds a row.</span>`,
+    },
+    terms: [{ term: "Backward pass", def: "Walking a computational graph from the output back to the inputs, multiplying local derivatives, to get the derivative of the output with respect to every input." }],
+  });
+
+  Deck.slide({
+    id: "math-local",
+    title: "Sums pass grads back unchanged; products scale them by the other factor",
+    body: String.raw`<p>A backward step needs only the grad arriving at one operation and that operation's local derivatives. So PyTorch writes one backward function per operation (Part 3 shows them) and runs it wherever that operation appears. Two of them finish our graph.</p>
+<p><b>Addition</b>, \(u = m + b\): raising either input by \(\varepsilon\) raises \(u\) by \(\varepsilon,\) so both local derivatives are 1 and both inputs receive \(\operatorname{grad}(u)\) unchanged: \(\operatorname{grad}(m) = \operatorname{grad}(b) = 0.5.\)</p>
+<p><b>Multiplication</b>, \(m = w \times x\): raising \(w\) by \(\varepsilon\) raises \(m\) by \(x\varepsilon,\) so \(\partial m/\partial w = x\) and \(\partial m/\partial x = w.\) Each input receives \(\operatorname{grad}(m)\) times the other input: \(\operatorname{grad}(w) = 0.5 \times 1 = 0.5\) and \(\operatorname{grad}(x) = 0.5 \times 3 = 1.5.\) The rule reads both input values, so every value that feeds a product must be kept.</p>
+<p>Two sheets back, raising \(w\) and \(x\) by 0.001 measured 0.49994 and 1.4994; these are the exact values those ratios approach. Training never uses \(\operatorname{grad}(x),\) since \(x\) is data, but it equals the \(dy/dx\) of the three-stage chain earlier in this chapter. The plate also has the rules met so far: square scales the grad by \(2u,\) ln divides it by \(v,\) exp scales it by \(e^x.\)</p>`,
+    fig: {
+      type: "graph", mode: "rule", dp: 4, start: 1,
+      caption: "One operation, the grad arriving from the rest of the graph (held at its value in our graph), and what each input receives. The sliders move only the inputs: through + the grad is unchanged; through × it is scaled by the other input.",
+      rules: [
+        { label: "add", op: "add", names: ["m", "b"], out: "u", values: [3, 1], ranges: [[-4, 4, 0.5], [-4, 4, 0.5]], g: 0.5, say: "Both inputs receive the arriving grad unchanged, whatever their values." },
+        { label: "multiply", op: "mul", names: ["w", "x"], out: "m", values: [3, 1], ranges: [[-4, 4, 0.5], [-4, 4, 0.5]], g: 0.5, say: "Each input receives the arriving grad times the other input." },
+        { label: "square", op: "square", names: ["u"], out: "v", values: [4], ranges: [[-4, 4, 0.5]], g: 0.0625, say: String.raw`The grad is scaled by \(2u,\) so it flips sign when \(u\) does.` },
+        { label: "ln", op: "log", names: ["v"], out: "y", values: [16], ranges: [[1, 20, 1]], g: 1, rest: false, say: String.raw`Here \(y\) is the output, so \(\operatorname{grad}(y) = 1,\) and the grad is divided by \(v.\)` },
+        { label: "exp", op: "exp", names: ["x"], out: "s", values: [1], ranges: [[-2, 2, 0.5]], g: 1, say: String.raw`The grad is scaled by \(e^x,\) which is the output \(s\) itself.` },
+      ],
+    },
+    check: {
+      q: String.raw`\(m = w \times x\) with \(w = {-2}\) and \(x = 5,\) and \(\operatorname{grad}(m) = 0.5.\) What is \(\operatorname{grad}(w)\)?`,
+      options: ["2.5", "−1", "0.5", "5"],
+      answer: 0,
+      why: String.raw`\(\partial m/\partial w = x = 5,\) so \(\operatorname{grad}(w) = 0.5 \times 5 = 2.5.\) Using \(w\) itself gives \(0.5 \times ({-2}) = {-1},\) which is \(\operatorname{grad}(x).\) Passing 0.5 back unchanged is the rule for addition, and 5 is the local derivative before it is multiplied by \(\operatorname{grad}(m).\)`,
+    },
   });
 
   Deck.slide({
@@ -8874,12 +9325,18 @@ window.WIDGET_TEMPLATES = {
 <p>Numeric check: \((1.001\,e^{1.001} - 0.999\,e^{0.999})/0.002 = 5.4366.\) Backpropagation implements the sum with <code>+=</code>: each path adds its share into the derivative stored for the shared value.</p>`,
     fig: {
       type: "graph", caption: String.raw`<span>\(y = x \cdot e^x\) at \(x = 1.\) Step backward: the derivative stored at \(x\) grows by one path at a time.</span>`,
-      dp: 4, gx: 190, gy: 92, bw: 110, start: 2,
+      dp: 4, start: 2,
       nodes: [
         { id: "x", op: "input", value: 1, x: 0, y: 1 },
         { id: "s", label: "s", op: "exp", in: ["x"], x: 1, y: 0 },
         { id: "y", label: "y", op: "mul", in: ["s", "x"], x: 2, y: 1 },
       ],
+    },
+    check: {
+      q: String.raw`\(y = (a + b) \times b\) at \(a = 2\) and \(b = 3.\) What is \(\operatorname{grad}(b)\)?`,
+      options: ["8", "5", "3", "15"],
+      answer: 0,
+      why: String.raw`With \(s = a + b = 5,\) \(\operatorname{grad}(s) = \operatorname{grad}(y) \times b = 3.\) \(b\) is used twice: inside \(s\) it gives \(3 \times 1 = 3,\) and directly in the product it gives \(\operatorname{grad}(y) \times s = 5.\) The terms add: \(3 + 5 = 8,\) which is \(a + 2b,\) the derivative of \(ab + b^2.\) 5 and 3 are one use each; 15 is \(y\) itself.`,
     },
     terms: [{ term: "Sum over paths", def: "The derivative of an output with respect to a value used more than once: multiply local derivatives along each path from the value to the output, then add the paths." }],
   });
@@ -11602,12 +12059,13 @@ out = act @ w2                             # 8 × 16`,
   Deck.slide({
     id: "nn-bp-graph",
     title: "The backward pass multiplies local derivatives from the loss back",
+    layout: "wide",
     body: String.raw`<p>As in Part 1, the backward pass starts from \(\partial L/\partial L = 1\) and visits the operations in reverse. At each one it multiplies the gradient arriving from above by the local derivative and sends the product to each input. A value that feeds several operations adds up what comes back from each.</p>
 <p>Here \(\partial L/\partial e = 2e = {-1.2}\). Addition and subtraction pass it on unchanged, so \(\partial L/\partial z = \partial L/\partial m = \partial L/\partial b = {-1.2}\). The multiplication sends \({-1.2} \times x = {-1.8}\) to \(w\) and \({-1.2} \times w = {-0.96}\) to \(x\).</p>
 <p>Check with a finite difference: \(L(w + 0.001) = 0.35820225\) and \(L(w - 0.001) = 0.36180225\), so the slope is \({-0.0036} / 0.002 = {-1.8}\). Each edge of the graph is crossed once forward and once backward, so the backward pass costs a small constant times the forward pass: twice, for the matrix multiplies of a network (end of this chapter).</p>`,
     math: String.raw`\begin{aligned}\frac{\partial L}{\partial w} &= \frac{\partial L}{\partial e}\,\frac{\partial e}{\partial z}\,\frac{\partial z}{\partial m}\,\frac{\partial m}{\partial w} \\ &= ({-1.2})(1)(1)(1.5) = {-1.8}\end{aligned}`,
     fig: {
-      type: "graph", caption: "L = (w·x + b − y)² with w = 0.8, x = 1.5, b = 0.2, y = 2. Reset, then step forward and backward.", dp: 2, start: 11, gx: 138, gy: 84,
+      type: "graph", caption: "L = (w·x + b − y)² with w = 0.8, x = 1.5, b = 0.2, y = 2. Reset, then step forward and backward.", dp: 2, start: 11,
       nodes: [
         { id: "w", op: "param", value: 0.8, x: 0, y: 0 }, { id: "x", op: "input", value: 1.5, x: 0, y: 1 }, { id: "b", op: "param", value: 0.2, x: 0, y: 2 }, { id: "y", op: "input", value: 2, x: 2, y: 2 },
         { id: "m", label: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 }, { id: "z", label: "z", op: "add", in: ["m", "b"], x: 2, y: 1 },

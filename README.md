@@ -2,7 +2,7 @@
 
 An interactive drawing set that teaches how large language models are trained and served, from derivatives and loss functions to GPU kernels, distributed training, inference servers and post-training. It follows one SQL query, `SELECT name FROM users WHERE id = 7;`, through a real 9,968-parameter transformer that runs in the browser, and switches to Llama 3 and H100 numbers wherever scale matters.
 
-397 sheets in eleven parts: orientation, the math toolkit, learning from data, neural networks, language modeling, the transformer, GPUs and CUDA, training at scale, inference and serving, post-training, and a wrap-up.
+400 sheets in eleven parts: orientation, the math toolkit, learning from data, neural networks, language modeling, the transformer, GPUs and CUDA, training at scale, inference and serving, post-training, and a wrap-up.
 
 Every slide is a sheet in an engineering drawing set: sheet number and pencil notes in the margin, figures mounted as plates, a title block. The light theme is graph paper, the dark theme is blueprint.
 

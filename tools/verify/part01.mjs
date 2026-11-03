@@ -1,6 +1,8 @@
 // Part 1: recompute every number the math sheets state and check the text says it.
-import { claim, near, equal, ok, r, int, TinyLM, Deck, done } from "./lib.mjs";
-import { strings } from "../lib/deck-env.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { claim, near, equal, ok, r, int, TinyLM, Deck, window, slide, done } from "./lib.mjs";
+import { strings, ROOT } from "../lib/deck-env.mjs";
 
 const C = TinyLM.config;
 const sq = (x) => x * x;
@@ -186,15 +188,54 @@ near("vocab", C.V, 113); near("context", C.T, 8); near("d", C.d, 16); near("laye
   for (const t of ["u = 4,", "v = 16", "\\ln 16 = 2.7726,", "2u = 8", "1/v = 0.0625.", "3 \\times 8 \\times 0.0625 = 1.5.", "6/4 = 1.5."]) claim("math-chain-three", t);
   // the graph: y = ln((w x + b)^2), w = 3, x = 1, b = 1
   const w = 3, x = 1, b = 1, m = w * x, uu = m + b, vv = uu * uu;
-  const gv = 1 / vv, gu = gv * 2 * uu, gm = gu, gb = gu, gw = gm * x, gx = gm * w;
-  near("m", m, 3); near("u", uu, 4); near("v", vv, 16);
-  near("dy/dv", gv, 0.0625); near("dy/du", gu, 0.5); near("dy/db", gb, 0.5); near("dy/dw", gw, 0.5); near("dy/dx", gx, 1.5);
-  for (const t of ["m = 3,", "u = 4,", "v = 16,", "y = 2.7726.", "1 \\times 0.0625 \\times 8 = 0.5", "0.5 \\times x = 0.5", "0.5 \\times w = 1.5,"]) claim("math-graph", t);
+  const Y = (W, X, B) => Math.log(sq(W * X + B));
+  near("m", m, 3); near("u", uu, 4); near("v", vv, 16); near("y", +r(Y(w, x, b), 4), 2.7726);
+  for (const t of ["m = 3,", "u = 4,", "v = 16", "y = \\ln 16 = 2.7726.", "\\(u = 4\\) was kept", "m = w \\times x,", "u = m + b,", "v = u^2", "y = \\ln v."]) claim("math-graph", t);
+  // grads in closed form: y = 2 ln(wx + b)
+  const G = { w: 2 * x / (w * x + b), x: 2 * w / (w * x + b), b: 2 / (w * x + b), m: 2 / uu, u: 2 / uu, v: 1 / vv, y: 1 };
+  near("grad w", G.w, 0.5); near("grad x", G.x, 1.5); near("grad b", G.b, 0.5); near("grad m", G.m, 0.5); near("grad u", G.u, 0.5); near("grad v", G.v, 0.0625);
+  // backward pass as the sheets write it, edge by edge
+  near("1 × 1/16", 1 * (1 / vv), G.v); near("0.0625 × 2u", G.v * 2 * uu, G.u); near("0.5 × x", G.m * x, G.w); near("0.5 × w", G.m * w, G.x);
+  // raising one node by eps and rerunning: y as a function of each node's value, the others fixed
+  const raised = { w: (e) => Y(w + e, x, b), x: (e) => Y(w, x + e, b), b: (e) => Y(w, x, b + e), m: (e) => Math.log(sq(m + e + b)), u: (e) => Math.log(sq(uu + e)), v: (e) => Math.log(vv + e) };
+  const ratio = (n, e) => (raised[n](e) - Y(w, x, b)) / e;
+  const sig5 = (v) => String(Number(v.toPrecision(5)));
+  near("w + 0.001: u", uu + 0.001, 4.001, 1e-12); near("w + 0.001: v", sq(uu + 0.001), 16.008001, 1e-12);
+  equal("w + 0.001: dy", sig5(raised.w(0.001) - Y(w, x, b)), "0.00049994");
+  equal("w + 0.001: dy/eps", sig5(ratio("w", 0.001)), "0.49994"); equal("x + 0.001: dy/eps", sig5(ratio("x", 0.001)), "1.4994");
+  for (const n of ["b", "m", "u"]) equal(`${n} + 0.001: dy/eps`, sig5(ratio(n, 0.001)), "0.49994");
+  for (const n of Object.keys(raised)) near(`${n}: dy/eps → grad as eps → 0`, ratio(n, 1e-7), G[n], 1e-6);
+  near("y at w = 3.001 (6 dp)", +Y(3.001, 1, 1).toFixed(6), 2.773089, 1e-12);
+  // six nodes can be raised (all but y), and the graph has six edges: six multiplications backward
+  const edges = [["w", "m"], ["x", "m"], ["m", "u"], ["b", "u"], ["u", "v"], ["v", "y"]];
+  equal("raisable nodes", Object.keys(raised).length, 6); equal("edges of the graph", edges.length, 6);
+  near("u raised: 4 becomes 4.001", 4 + 0.001, 4.001, 1e-12);
+  for (const t of ["one extra forward pass per node, 6 here", "all 6 grads exactly, with one multiplication per edge", "(4 becomes 4.001)"]) claim("math-grad", t);
+  for (const t of ["m = 3.001,", "u = 4.001,", "v = 16.008001,", "rises by 0.00049994.", "0.00049994/0.001 = 0.49994.", "gives 1.4994.", "settle at 0.5 and 1.5,", "\\operatorname{grad}(w) = 0.5", "\\operatorname{grad}(x) = 1.5."]) claim("math-grad", t);
+  // the check: raise b to 1.01
+  const yb = Y(w, x, 1.01);
+  equal("y at b = 1.01 (4 dp)", yb.toFixed(4), "2.7776"); equal("y at b = 1.01 (7 dp)", yb.toFixed(7), "2.7775825"); equal("y (7 dp)", Y(w, x, b).toFixed(7), "2.7725887");
+  near("printed difference is exact", 2.7775825 - 2.7725887, 0.0049938, 1e-12);
+  equal("dy for b + 0.01", (yb - Y(w, x, b)).toFixed(7), "0.0049938"); equal("ratio for b + 0.01", ((yb - Y(w, x, b)) / 0.01).toFixed(5), "0.49938");
+  for (const t of ["from 1 to 1.01 raises \\(y\\) from 2.7726 to 2.7776", "2.7775825 - 2.7725887 = 0.0049938", "0.0049938/0.01 = 0.49938,"]) claim("math-grad", t);
+  for (const t of ["\\operatorname{grad}(y) = 1,", "\\(y,\\) \\(v,\\) \\(u,\\) \\(m.\\)", "\\partial y/\\partial v = 1/v = 0.0625,", "\\operatorname{grad}(v) = 0.0625.", "\\partial v/\\partial u = 2u = 8,", "\\operatorname{grad}(u) = 0.0625 \\times 8 = 0.5,", "ratio for \\(u\\) (0.49994) approaches", "\\(1,\\) then \\(0.0625,\\) then \\(0.5.\\)"]) claim("math-backward", t);
+  near("1/v at 16", 1 / 16, 0.0625); near("1 × 0.0625 × 8", 1 * 0.0625 * 8, 0.5);
+  for (const t of ["\\operatorname{grad}(m) = \\operatorname{grad}(b) = 0.5.", "\\partial m/\\partial w = x", "\\partial m/\\partial x = w.", "\\operatorname{grad}(w) = 0.5 \\times 1 = 0.5", "\\operatorname{grad}(x) = 0.5 \\times 3 = 1.5.", "measured 0.49994 and 1.4994;", "it equals the \\(dy/dx\\) of the three-stage chain"]) claim("math-local", t);
+  near("grad x equals the three-stage chain's dy/dx", G.x, 3 * 8 * 0.0625, 1e-15);
+  // the check: m = w x with w = -2, x = 5, grad(m) = 0.5
+  near("grad w = 0.5 x", 0.5 * 5, 2.5); near("grad x = 0.5 w", 0.5 * -2, -1);
+  for (const t of ["\\operatorname{grad}(w) = 0.5 \\times 5 = 2.5.", "0.5 \\times ({-2}) = {-1},"]) claim("math-local", t);
   // two paths: x e^x
   const f = (t) => t * Math.exp(t);
   near("2e", +r(2 * Math.E, 4), 5.4366); near("central diff of x e^x", +r((f(1.001) - f(0.999)) / 0.002, 4), 5.4366);
   near("paths add to (1 + x) e^x", Math.exp(1) + 1 * Math.exp(1), 2 * Math.E, 1e-15);
   claim("math-two-paths", "2e = 5.4366."); claim("math-two-paths", "/0.002 = 5.4366.");
+  {
+    const a = 2, b = 3, s = a + b, y = s * b, gs = b, viaS = gs * 1, direct = s;
+    near("check: s", s, 5); near("check: grad(s)", gs, 3); near("check: grad(b) = a + 2b", viaS + direct, a + 2 * b); near("check: 8", viaS + direct, 8); near("check: y", y, 15);
+    near("check: numeric d/db of (a + b) b", ((a + b + 1e-6) * (b + 1e-6) - (a + b - 1e-6) * (b - 1e-6)) / 2e-6, 8, 1e-6);
+    for (const t of ["\\(s = a + b = 5,\\)", "\\operatorname{grad}(s) = \\operatorname{grad}(y) \\times b = 3.", "\\(3 \\times 1 = 3,\\)", "\\operatorname{grad}(y) \\times s = 5.", "\\(3 + 5 = 8,\\)", "15 is \\(y\\) itself"]) claim("math-two-paths", t);
+  }
   // why: finite differences vs backprop on our model; parameter groups
   const shapes = Object.fromEntries(C.shapes.map(([n, s]) => [n, s.reduce((a, b) => a * b, 1)]));
   const sum = (ns) => ns.reduce((a, n) => a + shapes[n], 0);
@@ -528,6 +569,96 @@ near("vocab", C.V, 113); near("context", C.T, 8); near("d", C.d, 16); near("laye
   // the logarithm of a square, written unambiguously
   claim("math-chain-three", "\\ln\\big((3x + 1)^2\\big)");
   near("ln((3x+1)^2) = 2 ln(3x+1) at x = 1", Math.log((3 + 1) ** 2), 2 * Math.log(3 + 1), 1e-12);
+}
+
+// ---------------------------------------------------------------- the graph figure, driven
+// Mount every graph figure in the page model, step it, and compare each grad and ratio it shows
+// with the closed forms (y = 2 ln(wx + b); L = (wx + b − y)²; y = x eˣ).
+{
+  const captured = {};
+  const realFig = Deck.fig;
+  Deck.fig = (t, f) => { captured[t] = f; };
+  window.eval(fs.readFileSync(path.join(ROOT, "js/core/figs.js"), "utf8"));
+  Deck.fig = realFig;
+  const doc = window.document;
+  const mount = (id) => { const el = doc.createElement("div"); doc.body.appendChild(el); captured.graph(el, slide(id).fig); return el; };
+  const press = (el, label, n = 1) => { const b = [...el.querySelectorAll("button")].find((x) => x.textContent.includes(label)); for (let i = 0; i < n; i++) b.click(); };
+  const pick = (el, group, label) => [...el.querySelectorAll(".ctl-seg")[group].querySelectorAll("button")].find((x) => x.textContent.trim() === label).click();
+  const val = (s) => Number(String(s).replace(/−/g, "-").replace(/^[^0-9-]+/, ""));
+  // node name → [label, value, third line] as drawn
+  const drawn = (el) => Object.fromEntries([...el.querySelectorAll(".f-node")].map((g) => { const t = [...g.querySelectorAll("text")].map((x) => x.textContent); return [t[0].split(" = ")[0], t]; }));
+  // visible text only: MathML carries its TeX source in <annotation> elements
+  const flat = (node) => { const c = node.cloneNode(true); c.querySelectorAll("annotation").forEach((a) => a.remove()); return c.textContent.replace(/[\s\u2061\u2062\u2063]+/g, ""); };
+
+  const w = 3, x = 1, b = 1, Y = (W, X, B) => Math.log((W * X + B) ** 2);
+  const G = { w: 2 * x / (w * x + b), x: 2 * w / (w * x + b), b: 2 / (w * x + b), m: 0.5, u: 0.5, v: 1 / 16, y: 1 };
+  {
+    const el = mount("math-backward");
+    press(el, "Show all");
+    const d = drawn(el);
+    for (const n of Object.keys(G)) near(`math-backward figure: grad(${n})`, val(d[n][2]), G[n], 5e-5);
+    const rows = [...el.querySelectorAll(".f-graph-ledger tbody tr")].map(flat);
+    equal("math-backward figure: table rows", rows.length, 7);
+    for (const t of ["∂y/∂v=1/v=1/16=0.0625", "0.0625×8=0.5", "∂v/∂u=2u=2×4=8", "∂m/∂x=w=3", "0.5×3=1.5"]) ok(`math-backward figure: table shows ${t}`, rows.some((row) => row.includes(t)));
+    press(el, "Reset"); press(el, "Forward step", 4); press(el, "Backward step", 2);
+    ok("math-backward figure: step 2 explains 0.0625 × 8 = 0.5", flat(el.querySelector(".f-graph-expl")).includes("grad(u)=grad(v)×∂v/∂u=0.0625×8=0.5"));
+    equal("math-backward figure: step 2 has 3 table rows", el.querySelectorAll(".f-graph-ledger tbody tr").length, 3);
+  }
+  {
+    const el = mount("math-graph");
+    press(el, "Forward step", 2);
+    const d = drawn(el);
+    equal("math-graph figure: m and u known after 2 steps, v not", [d.m[1], d.u[1], d.v[1]], ["3", "4", "?"]);
+    press(el, "Show all");
+    near("math-graph figure: y", val(drawn(el).y[1]), Y(w, x, b), 5e-5);
+  }
+  {
+    const el = mount("math-grad");
+    const ratio = { w: (e) => Y(w + e, x, b), x: (e) => Y(w, x + e, b), b: (e) => Y(w, x, b + e), m: (e) => Math.log((3 + e + 1) ** 2), u: (e) => Math.log((4 + e) ** 2), v: (e) => Math.log(16 + e) };
+    for (const eps of [0.001, 0.1]) {
+      if (eps !== 0.001) pick(el, 1, String(eps));
+      const rows = [...el.querySelectorAll(".f-graph-ledger tbody tr")];
+      Object.keys(ratio).forEach((n, i) => equal(`math-grad figure: Δy/ε for ${n} at ε = ${eps}`, rows[i].cells[2].textContent, ((ratio[n](eps) - Y(w, x, b)) / eps).toPrecision(5)));
+    }
+    pick(el, 0, "v"); pick(el, 1, "0.001");
+    const d = drawn(el);
+    equal("math-grad figure: raising v leaves u and earlier nodes alone", [d.u[1], d.m[1], d.w[1]], ["4", "3", "3"]);
+    equal("math-grad figure: v raised", d.v[1], "16.001");
+    pick(el, 1, "0.0001");
+    equal("math-grad figure: ratio for v at ε = 0.0001 is not printed as the exact 0.0625", el.querySelectorAll(".f-graph-ledger tbody tr")[5].cells[2].textContent, "0.062500");
+    // the sentence's two printed values of y subtract to the printed change
+    const sent = flat(el.querySelector(".f-graph-expl"));
+    const m = sent.match(/from([0-9.]+)to([0-9.]+),soΔy=([0-9.]+)/);
+    ok("math-grad figure: sentence gives y before, after and Δy", !!m);
+    if (m) near("math-grad figure: printed y values subtract to printed Δy", +m[2] - +m[1], +m[3], 0.6 * 10 ** -(m[1].split(".")[1].length));
+  }
+  {
+    const el = mount("math-local");
+    const g = () => Object.fromEntries(Object.entries(drawn(el)).map(([k, t]) => [k, val(t[2])]));
+    let d = g();
+    near("math-local figure: multiply grad(w)", d.w, 0.5, 5e-5); near("math-local figure: multiply grad(x)", d.x, 1.5, 5e-5);
+    const wIn = el.querySelector("input[type=range]");
+    wIn.value = -2; wIn.dispatchEvent(new window.Event("input"));
+    near("math-local figure: w = −2 gives grad(x) = 0.5 × −2", g().x, -1, 5e-5);
+    pick(el, 0, "add"); d = g(); near("math-local figure: add grad(m)", d.m, 0.5, 5e-5); near("math-local figure: add grad(b)", d.b, 0.5, 5e-5);
+    pick(el, 0, "square"); near("math-local figure: square grad(u)", g().u, 0.5, 5e-5);
+    pick(el, 0, "ln"); near("math-local figure: ln grad(v)", g().v, 0.0625, 5e-5);
+    pick(el, 0, "exp"); near("math-local figure: exp grad(x)", g().x, Math.E, 5e-5);
+  }
+  {
+    const el = mount("math-two-paths");
+    press(el, "Show all");
+    const d = drawn(el);
+    near("math-two-paths figure: grad(x) = 2e", val(d.x[2]), 2 * Math.E, 5e-5); near("math-two-paths figure: grad(s) = x", val(d.s[2]), 1, 5e-5);
+    ok("math-two-paths figure: second path adds to the first", [...el.querySelectorAll(".f-graph-ledger tbody tr")].map(flat).some((row) => row.includes("2.7183+1×2.7183=5.4366")));
+  }
+  {
+    const el = mount("nn-bp-graph");
+    const W = 0.8, X = 1.5, B = 0.2, T = 2, e = W * X + B - T;
+    const want = { e: 2 * e, z: 2 * e, m: 2 * e, b: 2 * e, y: -2 * e, w: 2 * e * X, x: 2 * e * W, L: 1 };
+    const d = drawn(el);
+    for (const n of Object.keys(want)) near(`nn-bp-graph figure: grad(${n})`, val(d[n][2]), want[n], 5e-3);
+  }
 }
 
 done();

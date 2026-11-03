@@ -299,107 +299,459 @@
   });
 
   // ------------------------------------------------------------ graph: forward and backward through a computation
+  // Each operation gives f (forward), d (its local derivatives, one per input), tex (its formula,
+  // from input names or values) and dtex (each local derivative as a formula of the input names);
+  // dsub, where given, is that formula with the values put in. Leaves (input, param, const) have no f.
   const OPS = {
-    input: { f: () => null }, param: { f: () => null }, const: { f: () => null },
-    add: { f: (a, b) => a + b, d: () => [1, 1], sym: "+", show: (n, a, b) => `${a} + ${b}` },
-    sub: { f: (a, b) => a - b, d: () => [1, -1], sym: "−", show: (n, a, b) => `${a} − ${b}` },
-    mul: { f: (a, b) => a * b, d: (a, b) => [b, a], sym: "×", show: (n, a, b) => `${a} × ${b}` },
-    div: { f: (a, b) => a / b, d: (a, b) => [1 / b, -a / (b * b)], sym: "÷", show: (n, a, b) => `${a} ÷ ${b}` },
-    square: { f: (a) => a * a, d: (a) => [2 * a], sym: "(·)²", show: (n, a) => `${a}²` },
-    exp: { f: (a) => Math.exp(a), d: (a) => [Math.exp(a)], sym: "exp(·)", show: (n, a) => `e^${a}` },
-    log: { f: (a) => Math.log(a), d: (a) => [1 / a], sym: "ln(·)", show: (n, a) => `ln ${a}` },
-    neg: { f: (a) => -a, d: () => [-1], sym: "−(·)", show: (n, a) => `−${a}` },
-    sigmoid: { f: (a) => 1 / (1 + Math.exp(-a)), d: (a) => { const q = 1 / (1 + Math.exp(-a)); return [q * (1 - q)]; }, sym: "σ(·)", show: (n, a) => `σ(${a})` },
-    tanh: { f: (a) => Math.tanh(a), d: (a) => [1 - Math.tanh(a) ** 2], sym: "tanh(·)", show: (n, a) => `tanh(${a})` },
-    relu: { f: (a) => Math.max(0, a), d: (a) => [a > 0 ? 1 : 0], sym: "ReLU(·)", show: (n, a) => `max(0, ${a})` },
-    sum: { f: (...a) => a.reduce((x, y) => x + y, 0), d: (...a) => a.map(() => 1), sym: "Σ", show: (n, ...a) => a.join(" + ") },
+    input: {}, param: {}, const: {},
+    add: { f: (a, b) => a + b, d: () => [1, 1], tex: ([a, b]) => `${a} + ${b}`, dtex: () => ["1", "1"] },
+    sub: { f: (a, b) => a - b, d: () => [1, -1], tex: ([a, b]) => `${a} - ${b}`, dtex: () => ["1", "{-1}"] },
+    mul: { f: (a, b) => a * b, d: (a, b) => [b, a], tex: ([a, b]) => `${a} \\times ${b}`, dtex: ([a, b]) => [b, a] },
+    div: { f: (a, b) => a / b, d: (a, b) => [1 / b, -a / (b * b)], tex: ([a, b]) => `${a} / ${b}`, dtex: ([a, b]) => [`1/${b}`, `{-${a}}/${b}^2`], dsub: ([a, b]) => [`1/${b}`, `{-${a}}/${b}^2`] },
+    square: { f: (a) => a * a, d: (a) => [2 * a], tex: ([a]) => `${a}^2`, dtex: ([a]) => [`2${a}`], dsub: ([a]) => [`2 \\times ${a}`] },
+    exp: { f: (a) => Math.exp(a), d: (a) => [Math.exp(a)], tex: ([a]) => `e^{${a}}`, dtex: ([a]) => [`e^{${a}}`] },
+    log: { f: (a) => Math.log(a), d: (a) => [1 / a], tex: ([a]) => `\\ln ${a}`, dtex: ([a]) => [`1/${a}`], dsub: ([a]) => [`1/${a}`] },
+    neg: { f: (a) => -a, d: () => [-1], tex: ([a]) => `{-${a}}`, dtex: () => ["{-1}"] },
+    sigmoid: { f: (a) => 1 / (1 + Math.exp(-a)), d: (a) => { const q = 1 / (1 + Math.exp(-a)); return [q * (1 - q)]; }, tex: ([a]) => `\\sigma(${a})`, dtex: ([a]) => [`\\sigma(${a})(1 - \\sigma(${a}))`] },
+    tanh: { f: (a) => Math.tanh(a), d: (a) => [1 - Math.tanh(a) ** 2], tex: ([a]) => `\\tanh ${a}`, dtex: ([a]) => [`1 - \\tanh^2 ${a}`] },
+    relu: { f: (a) => Math.max(0, a), d: (a) => [a > 0 ? 1 : 0], tex: ([a]) => `\\max(0, ${a})`, dtex: (n, [a]) => [a > 0 ? "1" : "0"] },
+    sum: { f: (...a) => a.reduce((x, y) => x + y, 0), d: (...a) => a.map(() => 1), tex: (n) => n.join(" + "), dtex: (n) => n.map(() => "1") },
   };
+
+  // The small TeX subset the node labels use, as SVG text: ^ raises, _ lowers, commands become symbols.
+  function svgMath(tex) {
+    const src = String(tex).replace(/\\times/g, "×").replace(/\\cdot/g, "·").replace(/\\(ln|tanh|max|exp)\s*/g, "$1 ")
+      .replace(/\\sigma/g, "σ").replace(/\\partial\s*/g, "∂").replace(/\\operatorname\{([^}]*)\}/g, "$1").replace(/-/g, "−");
+    const runs = [];
+    let cur = "", i = 0;
+    const flush = () => { if (cur) runs.push([cur, 0]); cur = ""; };
+    while (i < src.length) {
+      const c = src[i];
+      if (c === "^" || c === "_") {
+        flush();
+        let g;
+        if (src[i + 1] === "{") {
+          let depth = 1, j = i + 2;
+          while (j < src.length && depth) { if (src[j] === "{") depth++; else if (src[j] === "}") depth--; j++; }
+          g = src.slice(i + 2, j - 1); i = j;
+        } else { g = src[i + 1] || ""; i += 2; }
+        runs.push([g.replace(/[{}]/g, ""), c === "^" ? 1 : -1]);
+      } else { if (c !== "{" && c !== "}") cur += c; i++; }
+    }
+    flush();
+    return runs;
+  }
+  // Scripts are set at 72% and shifted with dy, which counts in the tspan's own font size.
+  function svgText(attrs, tex) {
+    const t = s("text", attrs);
+    let at = 0; // current baseline offset, in em of the main text
+    for (const [str, k] of svgMath(tex)) {
+      const want = k === 1 ? -0.32 : k === -1 ? 0.2 : 0;
+      const dy = k ? (want - at) / 0.72 : want - at;
+      t.appendChild(s("tspan", { class: k ? "f-script" : null, dy: dy ? `${+dy.toFixed(3)}em` : null }, str));
+      at = want;
+    }
+    return t;
+  }
+
+  // Shared by every mode of the graph figure: number formats, TeX helpers, layout and drawing.
+  function graphKit(sp, BH) {
+    const dp = sp.dp ?? 3, BW = sp.bw || 108;
+    const short = (v) => { const r = Number(fix(v, dp)); return String(r === 0 ? 0 : r); };
+    const k = {
+      dp, BW, BH,
+      short,
+      show: (v) => fmt.minus(short(v)),
+      tn: (v) => (Number(fix(v, dp)) < 0 ? `{-${short(-v)}}` : short(v)),
+      T: (src) => `\\(${src}\\)`,
+      // a chain "a = b = c" as one formula per link, so a narrow line can wrap before each "="
+      TT: (src) => src.split(/(?= = )/).map((p) => `\\(${p.trim()}\\)`).join(" "),
+      // put trailing punctuation inside a closing inline formula, so a line cannot break before it
+      end: (str, p) => (str.endsWith("\\)") ? `${str.slice(0, -2)}${p}\\)` : str + p),
+      G: (name) => `\\operatorname{grad}(${name})`,
+      dn: (n, a) => `\\partial ${n}/\\partial ${a}`,
+    };
+    k.tnp = (v) => (Number(fix(v, dp)) < 0 ? `(${k.tn(v)})` : k.tn(v));
+    // Layout: node.x is the step from the inputs, node.y the lane. Across ("h") puts steps in
+    // columns; down ("v") puts them in rows, for narrow plates.
+    k.geometry = (o, list) => {
+      const c0 = Math.min(...list.map((n) => (o === "h" ? n.x : n.y))), r0 = Math.min(...list.map((n) => (o === "h" ? n.y : n.x)));
+      const col = (n) => (o === "h" ? n.x : n.y) - c0, row = (n) => (o === "h" ? n.y : n.x) - r0;
+      const cw = BW + (o === "h" ? 72 : 10), rh = BH + (o === "h" ? 30 : 58), PAD = o === "h" ? 14 : 8;
+      const W = Math.max(...list.map(col)) * cw + BW + 2 * PAD, H = Math.max(...list.map(row)) * rh + BH + 2 * PAD;
+      return { o, W, H, P: (n) => [PAD + BW / 2 + col(n) * cw, PAD + BH / 2 + row(n) * rh] };
+    };
+    // start a drawing; labels widen it if they reach past the nodes (fit sets the final viewBox)
+    k.begin = (svg, Gm) => {
+      clear(svg);
+      k.ext = { x0: 0, x1: Gm.W };
+      svg.appendChild(k.defs());
+    };
+    k.fit = (svg, Gm) => {
+      const { x0, x1 } = k.ext;
+      svg.setAttribute("viewBox", `${x0} 0 ${x1 - x0} ${Gm.H}`);
+      svg.style.maxWidth = `${x1 - x0}px`;
+    };
+    const uid = Math.random().toString(36).slice(2, 8);
+    k.defs = () => s("defs", null, ["ink", "on", "bw"].map((c) => s("marker", { id: `ga-${uid}-${c}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: "userSpaceOnUse", orient: "auto" },
+      s("path", { d: "M0,1 L10,5 L0,9 z", class: `f-ah ${c}` }))));
+    k.marker = (c) => `url(#ga-${uid}-${c})`;
+    // the visible part of the edge a → b, between the two boxes
+    k.seg = (Gm, a, b) => {
+      const [ax, ay] = Gm.P(a), [bx, by] = Gm.P(b);
+      const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      const cut = (pad) => Math.min(ux ? (BW / 2 + pad) / Math.abs(ux) : Infinity, uy ? (BH / 2 + pad) / Math.abs(uy) : Infinity);
+      const c0 = cut(1), c1 = cut(3);
+      return { x1: ax + ux * c0, y1: ay + uy * c0, x2: bx - ux * c1, y2: by - uy * c1, nx: -uy, ny: ux };
+    };
+    // a forward edge, optionally with its backward arrow (on one side) and a label (on the other)
+    // a forward edge, and its backward arrow (red, on the +normal side) while that edge is being crossed
+    k.edge = (svg, Gm, a, b, { cls = "", bw = false } = {}) => {
+      const e = k.seg(Gm, a, b);
+      svg.appendChild(s("line", { x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2, class: `f-edge ${cls}`, "marker-end": k.marker(cls === "on" ? "on" : "ink") }));
+      if (bw) {
+        const o = 5.5;
+        svg.appendChild(s("line", { x1: e.x2 + e.nx * o, y1: e.y2 + e.ny * o, x2: e.x1 + e.nx * o, y2: e.y1 + e.ny * o, class: "f-edge bw", "marker-end": k.marker("bw") }));
+      }
+    };
+    // Where each edge's label goes: beside the edge, on whichever side and at whichever point along it
+    // crosses no other line, no node and no earlier label. Every edge is placed, shown or not, so a
+    // label keeps its place as more of them appear.
+    const LH = 15, textW = (str) => str.length * 7.9 + 4;
+    const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+    const crosses = (sg, r) => { // Liang–Barsky: does the segment enter rectangle r?
+      let t0 = 0, t1 = 1;
+      const dx = sg.x2 - sg.x1, dy = sg.y2 - sg.y1;
+      const p = [-dx, dx, -dy, dy], q = [sg.x1 - r.l, r.r - sg.x1, sg.y1 - r.t, r.b - sg.y1];
+      for (let i = 0; i < 4; i++) {
+        if (p[i] === 0) { if (q[i] < 0) return false; continue; }
+        const t = q[i] / p[i];
+        if (p[i] < 0) { if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+      }
+      return true;
+    };
+    k.placeLabels = (Gm, list, edges) => {
+      const segs = edges.map((ed) => k.seg(Gm, ed.a, ed.b));
+      const boxes = list.map((n) => { const [cx, cy] = Gm.P(n); return { l: cx - BW / 2 - 5, r: cx + BW / 2 + 5, t: cy - BH / 2 - 4, b: cy + BH / 2 + 4 }; });
+      const taken = [];
+      return edges.map((ed, i) => {
+        if (!ed.text) return null;
+        const e = segs[i], w = textW(ed.text);
+        let best = null, bestCost = Infinity;
+        for (const t of [0.5, 0.38, 0.62, 0.28, 0.72]) for (const side of [-1, 1]) {
+          const lx = side * e.nx, ly = side * e.ny, off = side < 0 ? 11 : 20; // the backward arrow runs on the +1 side
+          const anchor = lx > 0.35 ? "start" : lx < -0.35 ? "end" : "middle";
+          const x = e.x1 + (e.x2 - e.x1) * t + lx * off, y = e.y1 + (e.y2 - e.y1) * t + ly * (anchor === "middle" ? off + 3 : off);
+          const left = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+          const r = { l: left, r: left + w, t: y - LH / 2, b: y + LH / 2 };
+          const cost = boxes.filter((bx) => hit(r, bx)).length * 4 + taken.filter((tr) => hit(r, tr)).length * 4 +
+            segs.filter((sg, j) => j !== i && crosses(sg, r)).length * 3 + (crosses(e, r) ? 2 : 0) + (r.l < 0 || r.r > Gm.W ? 1 : 0);
+          if (cost < bestCost) { best = { x, y, anchor, r }; bestCost = cost; }
+        }
+        taken.push(best.r);
+        return best;
+      });
+    };
+    k.label = (svg, at, text, cls = "") => {
+      svg.appendChild(s("text", { x: at.x, y: at.y, class: `f-edge-l ${cls}`, "text-anchor": at.anchor, "dominant-baseline": "central" }, text));
+      if (k.ext) { k.ext.x0 = Math.min(k.ext.x0, at.r.l - 2); k.ext.x1 = Math.max(k.ext.x1, at.r.r + 2); }
+    };
+    // a node box with two or three lines of text: label, value, and grad (or change)
+    k.node = (svg, Gm, n, cls, lines) => {
+      const [cx, cy] = Gm.P(n);
+      const g = s("g", { class: `f-node ${cls}` });
+      g.appendChild(s("rect", { x: cx - BW / 2, y: cy - BH / 2, width: BW, height: BH, rx: n.leaf ? 3 : 14 }));
+      const ys = BH >= 60 ? [-17, 2, 21] : [-9, 10];
+      lines.forEach((ln, i) => { if (ln && ln.tex !== "") g.appendChild(svgText({ x: cx, y: cy + ys[i], class: ln.cls, "text-anchor": "middle", "dominant-baseline": "central" }, ln.tex)); });
+      svg.appendChild(g);
+      return g;
+    };
+    k.slopeLabel = (v) => `×${v < 0 && Number(fix(v, dp)) < 0 ? `(${k.show(v)})` : k.show(v)}`;
+    return k;
+  }
+
+  // The graph figure. Modes: "step" (forward, then backward; the default), "fw" (forward only),
+  // "nudge" (raise one node by ε and recompute), "rule" (one operation's backward rule with sliders).
   F("graph", (el, sp) => {
+    const mode = sp.mode || "step";
+    if (mode === "rule") return graphRule(el, sp);
+    const kit = graphKit(sp, mode === "fw" ? 50 : 66);
+    const { show, tn, tnp, T, TT, G, dn, end } = kit;
     const nodes = sp.nodes.map((n) => Object.assign({}, n));
     const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    const dp = sp.dp ?? 3;
-    // forward values
     for (const n of nodes) {
       const op = OPS[n.op];
       if (!op) throw new Error("unknown op " + n.op);
-      n.val = op.d ? op.f(...n.in.map((i) => byId[i].val)) : n.value;
+      n.leaf = !op.f;
+      n.val = op.f ? op.f(...n.in.map((i) => byId[i].val)) : n.value;
     }
     const out = byId[sp.output || nodes[nodes.length - 1].id];
-    const order = nodes.filter((n) => OPS[n.op].d);
-    const bwOrder = [out].concat(order.slice().reverse().filter((n) => n !== out));
-    // gradients
+    const order = nodes.filter((n) => !n.leaf);
+    const lab = (n) => n.label || n.id;
+    const names = (n) => n.in.map((i) => lab(byId[i]));
+    const vals = (n) => n.in.map((i) => byId[i].val);
+    const formula = (n) => (n.leaf ? lab(n) : `${lab(n)} = ${OPS[n.op].tex(names(n))}`);
+    // "∂n/∂a = formula = formula with values = value", without repeats
+    const dChain = (n, t) => {
+      const op = OPS[n.op], v = vals(n);
+      const parts = [op.dtex(names(n), v)[t]];
+      if (op.dsub) parts.push(op.dsub(v.map(tnp))[t]);
+      parts.push(tn(op.d(...v)[t]));
+      return [dn(lab(n), lab(byId[n.in[t]]))].concat(parts.filter((p, i) => i === 0 || p !== parts[i - 1])).join(" = ");
+    };
+
+    // backward steps: reverse topological order, one per edge; grad of a value used twice accumulates
     nodes.forEach((n) => { n.grad = 0; });
     out.grad = 1;
     const bwSteps = [];
     for (const n of order.slice().reverse()) {
-      const local = OPS[n.op].d(...n.in.map((i) => byId[i].val));
+      const local = OPS[n.op].d(...vals(n));
       n.in.forEach((iid, t) => {
-        byId[iid].grad += n.grad * local[t];
-        bwSteps.push({ from: n, to: byId[iid], local: local[t], upstream: n.grad });
+        const a = byId[iid], before = a.grad;
+        a.grad += n.grad * local[t];
+        bwSteps.push({ from: n, to: a, t, local: local[t], upstream: n.grad, before, after: a.grad });
       });
     }
-    const steps = [{ kind: "start" }].concat(order.map((n) => ({ kind: "fw", n })), bwSteps.map((b) => ({ kind: "bw", b })));
-    let k = sp.start ?? 0;
-    const uid = Math.random().toString(36).slice(2, 8);
-    const GX = sp.gx || 120, GY = sp.gy || 78, BW = sp.bw || 96, BH = 46;
-    const maxX = Math.max(...nodes.map((n) => n.x)), maxY = Math.max(...nodes.map((n) => n.y));
-    const Wd = (maxX + 1) * GX + 10, Hd = (maxY + 1) * GY + 10;
-    const P = (n) => [n.x * GX + GX / 2 + 5, n.y * GY + GY / 2 + 5];
-    const svg = s("svg", { viewBox: `0 0 ${Wd} ${Hd}`, class: "f-graph", role: "img", "aria-label": sp.aria || "computation graph" });
-    svg.appendChild(s("defs", null, s("marker", { id: `ga-${uid}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" }, s("path", { d: "M0,0 L10,5 L0,10 z", class: "f-ah" }))));
-    el.appendChild(h("div", { class: "scroll-x" }, svg));
+    bwSteps.forEach((b) => {
+      const into = bwSteps.filter((x) => x.to === b.to);
+      b.paths = into.length; b.path = into.indexOf(b) + 1;
+    });
+    const steps = [{ kind: "start" }].concat(order.map((n) => ({ kind: "fw", n })), mode === "fw" ? [] : bwSteps.map((b) => ({ kind: "bw", b })));
+    let k = Math.min(sp.start ?? 0, steps.length - 1);
+
+    const plain = (tex) => svgMath(tex).map((r) => r[0]).join("");
+    const svg = s("svg", { class: "f-graph", role: "img", "aria-label": sp.aria || `computation graph: ${order.map((n) => plain(formula(n))).join("; ")}` });
+    const wrap = h("div", { class: "f-graph-wrap" }, svg);
     const expl = h("p", { class: "f-graph-expl", "aria-live": "polite" });
-    el.appendChild(expl);
-    const lab = (n) => n.label || n.id;
-    function draw() {
-      clear(svg);
-      svg.appendChild(s("defs", null, s("marker", { id: `ga-${uid}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" }, s("path", { d: "M0,0 L10,5 L0,10 z", class: "f-ah" }))));
-      const cur = steps[k];
-      const fwDone = new Set(steps.slice(1, k + 1).filter((x) => x.kind === "fw").map((x) => x.n.id));
-      const showVal = (n) => !OPS[n.op].d || fwDone.has(n.id);
-      const gradShown = new Map();
-      steps.slice(1, k + 1).filter((x) => x.kind === "bw").forEach((x) => { gradShown.set(x.b.to.id, (gradShown.get(x.b.to.id) || 0) + x.b.upstream * x.b.local); gradShown.set(x.b.from.id, x.b.from.grad); });
-      if (steps.slice(1, k + 1).some((x) => x.kind === "bw") || (cur && cur.kind === "bw")) gradShown.set(out.id, 1);
-      for (const n of nodes) for (const iid of n.in || []) {
-        const a = P(byId[iid]), b = P(n);
-        const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
-        const ux = dx / L, uy = dy / L;
-        const sx = a[0] + ux * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2), sy = a[1] + uy * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2);
-        const ex = b[0] - ux * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2 + 3), ey = b[1] - uy * (Math.abs(ux) * BW / 2 + Math.abs(uy) * BH / 2 + 3);
-        const activeBw = cur && cur.kind === "bw" && cur.b.from === n && cur.b.to.id === iid;
-        svg.appendChild(s("line", { x1: sx, y1: sy, x2: ex, y2: ey, class: "f-edge" + (activeBw ? " bw" : ""), "marker-end": `url(#ga-${uid})` }));
-        if (activeBw) svg.appendChild(s("text", { x: (sx + ex) / 2, y: (sy + ey) / 2 - 6, class: "f-edge-l", "text-anchor": "middle" }, `×${num(cur.b.local, 2)}`));
-      }
-      for (const n of nodes) {
-        const [cx, cy] = P(n);
-        const isCur = cur && ((cur.kind === "fw" && cur.n === n) || (cur.kind === "bw" && (cur.b.to === n)));
-        const g = s("g", { class: "f-node" + (OPS[n.op].d ? "" : " leaf") + (n.op === "param" ? " param" : "") + (isCur ? " cur" : "") + (n === out ? " out" : "") });
-        g.appendChild(s("rect", { x: cx - BW / 2, y: cy - BH / 2, width: BW, height: BH, rx: OPS[n.op].d ? 23 : 3 }));
-        g.appendChild(s("text", { x: cx, y: cy - 7, class: "f-node-l", "text-anchor": "middle" }, OPS[n.op].d ? `${lab(n)} = ${OPS[n.op].sym}` : lab(n)));
-        g.appendChild(s("text", { x: cx, y: cy + 9, class: "f-node-v", "text-anchor": "middle" }, showVal(n) ? num(n.val, dp) : "?"));
-        if (gradShown.has(n.id)) g.appendChild(s("text", { x: cx, y: cy + BH / 2 + 13, class: "f-node-g", "text-anchor": "middle" }, `grad ${num(gradShown.get(n.id), dp)}`));
-        svg.appendChild(g);
-      }
-      if (!cur || cur.kind === "start") expl.innerHTML = sp.intro || "Press <b>Forward step</b> to compute each node from its inputs, then <b>Backward step</b> to send the gradient back.";
-      else if (cur.kind === "fw") {
-        const n = cur.n, args = n.in.map((i) => num(byId[i].val, dp));
-        expl.innerHTML = `<b>Forward.</b> ${lab(n)} = ${OPS[n.op].show(n, ...n.in.map((i) => lab(byId[i])))} = ${OPS[n.op].show(n, ...args)} = <b>${num(n.val, dp)}</b>`;
-      } else {
-        // the running total and the local factor get different names: they are different numbers
-        const b = cur.b;
-        const total = steps.slice(1, k + 1).filter((x) => x.kind === "bw" && x.b.to === b.to).reduce((a, x) => a + x.b.upstream * x.b.local, 0);
-        const paths = bwSteps.filter((x) => x.to === b.to).length;
-        expl.innerHTML = `<b>Backward.</b> grad(${lab(b.to)}) += grad(${lab(b.from)}) × local slope ∂${lab(b.from)}/∂${lab(b.to)} = ${num(b.upstream, dp)} × ${num(b.local, dp)} = <b>${num(b.upstream * b.local, dp)}</b>` +
-          (paths > 1 ? `. ${lab(b.to)} feeds ${paths} paths; running total grad(${lab(b.to)}) = <b>${num(total, dp)}</b>.` : ".") +
-          ` Here grad(v) means ∂${lab(out)}/∂v.`;
-      }
-      fwBtn.disabled = k >= order.length; bwBtn.disabled = k >= steps.length - 1;
+    const ledger = h("div", { class: "f-graph-ledger scroll-x" });
+    const box = h("div", { class: "f-graph-fig", style: { maxWidth: `${Math.max(kit.geometry("h", nodes).W, 640)}px` } }, wrap, expl);
+    el.appendChild(box);
+    let orient = null;
+    const pick = () => {
+      const w = wrap.clientWidth || (window.innerWidth < 700 ? 340 : 820);
+      return w >= 0.8 * kit.geometry("h", nodes).W ? "h" : "v";
+    };
+
+    // ---------------------------------------------------------------- nudge: raise one node by ε
+    if (mode === "nudge") {
+      const ns = sp.nudge || {};
+      const cands = (ns.nodes || nodes.filter((n) => n !== out).map((n) => n.id)).map((id) => byId[id]);
+      let pickN = byId[ns.node] || cands[0], eps = ns.eps ?? 0.001;
+      const sigA = (v) => v.toPrecision(5), sig = (v) => fmt.minus(sigA(v));
+      const sigT = (v) => (v < 0 ? `{-${sigA(-v)}}` : sigA(v));
+      const six = (v) => fmt.minus(String(Number(v.toFixed(6))));
+      const rerun = (target, delta) => {
+        const v = new Map();
+        for (const n of nodes) v.set(n.id, (n.leaf ? n.val : OPS[n.op].f(...n.in.map((i) => v.get(i)))) + (n === target ? delta : 0));
+        return v;
+      };
+      const after = (target) => {
+        const set = new Set([target.id]);
+        for (const n of nodes) if (!n.leaf && n.in.some((i) => set.has(i))) set.add(n.id);
+        return set;
+      };
+      const ctl = h("div", { class: "f-ctl" },
+        segmented({ label: "raise", value: pickN.id, options: cands.map((n) => ({ label: lab(n), value: n.id })), onChange: (v) => { pickN = byId[v]; draw(); } }),
+        segmented({ label: "by ε", value: eps, options: (ns.epsOptions || [0.1, 0.01, 0.001, 0.0001]).map((e) => ({ label: String(e), value: e })), onChange: (v) => { eps = v; draw(); } }));
+      box.append(ctl, ledger);
+      const draw = () => {
+        orient = pick();
+        const Gm = kit.geometry(orient, nodes);
+        kit.begin(svg, Gm);
+        const v = rerun(pickN, eps), moved = after(pickN);
+        for (const n of nodes) for (const iid of n.in || []) kit.edge(svg, Gm, byId[iid], n, { cls: moved.has(iid) && moved.has(n.id) ? "on" : "" });
+        for (const n of nodes) {
+          const m = moved.has(n.id);
+          kit.node(svg, Gm, n, [n.leaf ? "leaf" : "", n.op === "param" ? "param" : "", n === out ? "out" : "", n === pickN ? "nudged" : m ? "moved" : "still"].join(" "), [
+            { tex: formula(n), cls: "f-node-l" },
+            { tex: m ? six(v.get(n.id)) : show(n.val), cls: "f-node-v" },
+            m ? { tex: `${v.get(n.id) - n.val >= 0 ? "+" : ""}${sig(v.get(n.id) - n.val)}`, cls: "f-node-d" } : null,
+          ]);
+        }
+        kit.fit(svg, Gm);
+        const dy = v.get(out.id) - out.val, a = lab(pickN), y = lab(out);
+        const dec = Math.min(11, Math.max(6, Math.ceil(-Math.log10(Math.abs(dy))) + 4)), yv = (val) => fmt.minus(val.toFixed(dec));
+        expl.replaceChildren(html(`Raise ${T(a)} by ${T(`\\varepsilon = ${eps}`)}, from ${show(pickN.val)} to ${six(pickN.val + eps)}, and recompute only the nodes computed from it; every other node keeps its value. ` +
+          `${T(y)} moves from ${yv(out.val)} to ${yv(v.get(out.id))}, so ` +
+          `${T(`\\Delta ${y} = ${sigT(dy)}`)} and ${end(T(`\\Delta ${y}/\\varepsilon = ${sigT(dy / eps)}`), ".")}`));
+        clear(ledger);
+        const t = h("table", { class: "f-table dense" });
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "raise"), h("th", { class: "r" }, html(T(`\\Delta ${y}`))), h("th", { class: "r" }, html(T(`\\Delta ${y}/\\varepsilon`))))));
+        t.appendChild(h("tbody", null, cands.map((n) => {
+          const d = rerun(n, eps).get(out.id) - out.val;
+          return h("tr", { class: n === pickN ? "is-cur fw" : "" }, h("td", null, html(`${T(lab(n))} by ${eps}`)), h("td", { class: "r" }, sig(d)), h("td", { class: "r" }, h("b", null, sig(d / eps))));
+        })));
+        ledger.appendChild(t);
+      };
+      return mountGraph(wrap, draw, () => orient, pick);
     }
+
+    // ---------------------------------------------------------------- step: forward, then backward
     const fwBtn = button("Forward step ▸", () => { if (k < order.length) { k++; draw(); } }, { kind: "primary" });
-    const bwBtn = button("Backward step ◂", () => { if (k < order.length) k = order.length; if (k < steps.length - 1) k++; draw(); });
-    el.appendChild(h("div", { class: "f-ctl" }, button("Reset", () => { k = 0; draw(); }), fwBtn, bwBtn, button("Show all", () => { k = steps.length - 1; draw(); })));
-    draw();
+    const bwBtn = mode === "fw" ? null : button("Backward step ◂", () => { if (k < order.length) k = order.length; if (k < steps.length - 1) k++; draw(); }, { kind: "primary" });
+    box.append(h("div", { class: "f-ctl" }, button("Reset", () => { k = 0; draw(); }), fwBtn, bwBtn, button("Show all", () => { k = steps.length - 1; draw(); })), ledger);
+    const ledgerMode = sp.ledger ?? (mode === "fw" ? "fw" : "bw");
+
+    function draw() {
+      orient = pick();
+      const Gm = kit.geometry(orient, nodes);
+      kit.begin(svg, Gm);
+      const cur = steps[k];
+      const done = steps.slice(1, k + 1);
+      const fwDone = new Set(done.filter((x) => x.kind === "fw").map((x) => x.n.id));
+      const bwDone = done.filter((x) => x.kind === "bw").map((x) => x.b);
+      const grads = new Map();
+      if (bwDone.length) grads.set(out.id, 1);
+      bwDone.forEach((b) => grads.set(b.to.id, b.after));
+      const edges = [];
+      for (const n of nodes) (n.in || []).forEach((iid, t) => edges.push({ a: byId[iid], b: n, t, text: mode === "fw" ? null : kit.slopeLabel(OPS[n.op].d(...vals(n))[t]) }));
+      const at = kit.placeLabels(Gm, nodes, edges);
+      const labels = [];
+      edges.forEach((ed, i) => {
+        const bwNow = cur.kind === "bw" && cur.b.from === ed.b && cur.b.to === ed.a && cur.b.t === ed.t;
+        const crossed = bwDone.some((b) => b.from === ed.b && b.to === ed.a && b.t === ed.t);
+        kit.edge(svg, Gm, ed.a, ed.b, { cls: cur.kind === "fw" && cur.n === ed.b ? "on" : "", bw: bwNow });
+        if (crossed) labels.push([at[i], ed.text, bwNow ? "is-cur" : ""]);
+      });
+      for (const n of nodes) {
+        const known = n.leaf || fwDone.has(n.id);
+        const cls = [n.leaf ? "leaf" : "", n.op === "param" ? "param" : "", n === out ? "out" : "",
+          cur.kind === "fw" && cur.n === n ? "fw-cur" : "", cur.kind === "bw" && cur.b.to === n ? "bw-cur" : "", cur.kind === "bw" && cur.b.from === n ? "bw-src" : ""].join(" ");
+        const lines = [{ tex: formula(n), cls: "f-node-l" }, { tex: known ? show(n.val) : "?", cls: "f-node-v" }];
+        if (mode !== "fw") lines.push({ tex: grads.has(n.id) ? `grad ${show(grads.get(n.id))}` : "", cls: "f-node-g" });
+        kit.node(svg, Gm, n, cls, lines);
+      }
+      labels.forEach(([p, text, cls]) => kit.label(svg, p, text, cls));
+      kit.fit(svg, Gm);
+      expl.replaceChildren(html(explain(cur)));
+      fwBtn.disabled = k >= order.length;
+      if (bwBtn) bwBtn.disabled = k >= steps.length - 1;
+      drawLedger(cur, fwDone, bwDone);
+    }
+
+    function explain(cur) {
+      if (cur.kind === "start") return sp.intro || (mode === "fw"
+        ? "Only the inputs are known. <b>Forward step</b> computes one node from the values on its incoming edges."
+        : "Only the inputs are known. <b>Forward step</b> computes the nodes in order; <b>Backward step</b> then computes one grad per edge, from the output back.");
+      if (cur.kind === "fw") {
+        const n = cur.n, i = order.indexOf(n) + 1;
+        const f = TT(`${formula(n)} = ${OPS[n.op].tex(vals(n).map(tnp))} = ${tn(n.val)}`);
+        return `<b>Forward ${i}/${order.length}.</b> ` + (i === order.length ? `${end(f, ",")} the output.` : end(f, "."));
+      }
+      const b = cur.b, n = lab(b.from), a = lab(b.to), j = bwSteps.indexOf(b) + 1;
+      const s0 = b.local, dt = OPS[b.from.op].dtex(names(b.from), vals(b.from))[b.t];
+      let how;
+      if (s0 === 1 && dt === "1") how = `a small change in ${T(a)} changes ${T(n)} by the same amount: ${T(`${dn(n, a)} = 1`)}`;
+      else if (s0 === -1 && dt === "{-1}") how = `a small change in ${T(a)} changes ${T(n)} by the same amount in the opposite direction: ${T(`${dn(n, a)} = {-1}`)}`;
+      else if (s0 === 0) how = `a small change in ${T(a)} does not change ${T(n)}: ${T(`${dn(n, a)} = 0`)}`;
+      else how = `a small change in ${T(a)} changes ${T(n)} by ${T(dt)} times as much: ${TT(dChain(b.from, b.t))}`;
+      const term = `${tn(b.upstream)} \\times ${tnp(b.local)}`;
+      let res;
+      if (b.paths > 1 && b.path > 1) res = `Use ${b.path} of ${b.paths} of ${T(a)} adds its term: ${TT(`${G(a)} = ${tn(b.before)} + ${term} = ${tn(b.after)}`)}`;
+      else if (b.paths > 1) res = `${T(a)} is used ${b.paths} times, so ${T(G(a))} is a sum with one term per use. This use gives ${TT(`${G(n)} \\times ${dn(n, a)} = ${term} = ${tn(b.after)}`)}`;
+      else res = TT(`${G(a)} = ${G(n)} \\times ${dn(n, a)} = ${term} = ${tn(b.after)}`);
+      return `<b>Backward ${j}/${bwSteps.length}.</b> ${end(T(formula(b.from)), ",")} so ${end(how, ".")}<br>${end(res, ".")}`;
+    }
+
+    function drawLedger(cur, fwDone, bwDone) {
+      clear(ledger);
+      if (!ledgerMode) return;
+      if (ledgerMode === "fw" || ledgerMode === "both") {
+        const t = h("table", { class: "f-table dense fw" });
+        const rows = order.filter((n) => fwDone.has(n.id));
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "forward"), h("th", null, "computation"), h("th", { class: "r" }, "value"))));
+        t.appendChild(h("tbody", null, rows.length ? rows.map((n) => h("tr", { class: cur.kind === "fw" && cur.n === n ? "is-cur fw" : "" },
+          h("td", null, html(T(lab(n)))), h("td", null, html(T(`${OPS[n.op].tex(names(n))} = ${OPS[n.op].tex(vals(n).map(tnp))}`))), h("td", { class: "r" }, h("b", null, show(n.val)))))
+          : h("tr", null, h("td", { colspan: 3, class: "f-ledger-empty" }, "Each forward step adds a row."))));
+        ledger.appendChild(t);
+      }
+      if (ledgerMode === "bw" || ledgerMode === "both") {
+        const t = h("table", { class: "f-table dense bw" });
+        t.appendChild(h("thead", null, h("tr", null, h("th", null, "grad of"), h("th", null, "local derivative"), h("th", null, html(`grad of the node it feeds × local derivative`)))));
+        const rows = bwDone.map((b) => {
+          const n = lab(b.from), a = lab(b.to);
+          const prod = b.path > 1 ? `${tn(b.before)} + ${tn(b.upstream)} \\times ${tnp(b.local)} = ${tn(b.after)}` : `${tn(b.upstream)} \\times ${tnp(b.local)} = ${tn(b.after)}`;
+          return h("tr", { class: cur.kind === "bw" && cur.b === b ? "is-cur" : "" },
+            h("td", null, html(T(G(a)))), h("td", null, html(T(dChain(b.from, b.t)))), h("td", null, html(T(prod) + (b.paths > 1 ? ` <span class="f-ledger-note">use ${b.path} of ${b.paths}</span>` : ""))));
+        });
+        if (bwDone.length) rows.unshift(h("tr", null, h("td", null, html(T(G(lab(out))))), h("td", { class: "f-ledger-note" }, "start"), h("td", null, html(T("1")))));
+        t.appendChild(h("tbody", null, rows.length ? rows : h("tr", null, h("td", { colspan: 3, class: "f-ledger-empty" }, "Each backward step adds a row."))));
+        ledger.appendChild(t);
+      }
+    }
+    return mountGraph(wrap, draw, () => orient, pick);
   });
+
+  // Draw now, and again whenever the plate's width calls for the other orientation.
+  function mountGraph(wrap, draw, current, pick) {
+    draw();
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => { if (wrap.clientWidth && pick() !== current()) draw(); }).observe(wrap);
+    return { enter() { if (wrap.clientWidth && pick() !== current()) draw(); } };
+  }
+
+  // One operation's backward rule: its inputs, the grad arriving from the rest of the graph,
+  // and what each input receives. Sliders move the inputs.
+  function graphRule(el, sp) {
+    const kit = graphKit(sp, 66);
+    const { show, tn, tnp, T, TT, G, dn, end } = kit;
+    let r = sp.start ?? 0, vals = null;
+    const svg = s("svg", { class: "f-graph", role: "img", "aria-label": "one operation and the grads it sends back" });
+    const wrap = h("div", { class: "f-graph-wrap" }, svg);
+    const expl = h("p", { class: "f-graph-expl", "aria-live": "polite" });
+    const sliders = h("div", { class: "f-ctl sliders" });
+    const layoutNodes = (q) => {
+      const ins = q.names.map((nm, i) => ({ id: `in${i}`, label: nm, leaf: true, x: 0, y: q.names.length === 1 ? 0.5 : i }));
+      return ins.concat([{ id: "op", label: q.out, x: 1, y: 0.5 }], q.rest === false ? [] : [{ id: "rest", label: "rest", x: 2, y: 0.5, rest: true }]);
+    };
+    const ledger = h("div", { class: "f-graph-ledger scroll-x" });
+    el.append(h("div", { class: "f-graph-fig", style: { maxWidth: `${Math.max(...sp.rules.map((q) => kit.geometry("h", layoutNodes(q)).W), 640)}px` } }, wrap, expl,
+      h("div", { class: "f-ctl" }, segmented({ label: "operation", value: r, options: sp.rules.map((q, i) => ({ label: q.label, value: i })), onChange: (v) => { r = v; reset(); } })),
+      sliders, ledger));
+    let orient = null;
+    const pick = () => {
+      const w = wrap.clientWidth || (window.innerWidth < 700 ? 340 : 820);
+      return w >= 0.8 * kit.geometry("h", layoutNodes(sp.rules[r])).W ? "h" : "v";
+    };
+    function reset() {
+      const q = sp.rules[r];
+      vals = q.values.slice();
+      clear(sliders);
+      q.names.forEach((nm, i) => {
+        const [lo, hi, st] = q.ranges[i];
+        sliders.appendChild(slider({ label: nm, min: lo, max: hi, step: st, value: vals[i], format: (v) => show(v), onInput: (v) => { vals[i] = v; draw(); } }));
+      });
+      draw();
+    }
+    function draw() {
+      const q = sp.rules[r], op = OPS[q.op], list = layoutNodes(q);
+      orient = pick();
+      const Gm = kit.geometry(orient, list);
+      kit.begin(svg, Gm);
+      const outV = op.f(...vals), local = op.d(...vals), g = q.g;
+      const ins = list.filter((n) => n.leaf), opN = list.find((n) => n.id === "op"), rest = list.find((n) => n.rest);
+      const at = kit.placeLabels(Gm, list, ins.map((a, i) => ({ a, b: opN, text: kit.slopeLabel(local[i]) })));
+      ins.forEach((a) => kit.edge(svg, Gm, a, opN, { bw: true }));
+      if (rest) kit.edge(svg, Gm, opN, rest, { bw: true });
+      ins.forEach((a, i) => kit.node(svg, Gm, a, "leaf bw-cur", [{ tex: a.label, cls: "f-node-l" }, { tex: show(vals[i]), cls: "f-node-v" }, { tex: `grad ${show(g * local[i])}`, cls: "f-node-g" }]));
+      kit.node(svg, Gm, opN, rest ? "bw-src" : "bw-src out", [{ tex: `${q.out} = ${op.tex(q.names)}`, cls: "f-node-l" }, { tex: show(outV), cls: "f-node-v" }, { tex: `grad ${show(g)}`, cls: "f-node-g" }]);
+      if (rest) kit.node(svg, Gm, rest, "rest", [{ tex: "rest of graph", cls: "f-node-l" }, { tex: `→ ${sp.output || "y"}`, cls: "f-node-v" }, null]);
+      ins.forEach((a, i) => kit.label(svg, at[i], kit.slopeLabel(local[i]), "is-cur"));
+      kit.fit(svg, Gm);
+      const each = q.names.map((a, i) => TT(`${G(a)} = ${G(q.out)} \\times ${dn(q.out, a)} = ${tn(g)} \\times ${tnp(local[i])} = ${tn(g * local[i])}`));
+      expl.replaceChildren(html(`${q.say ? q.say : ""}${each.map((e, i) => `<br>${end(e, i < each.length - 1 ? ";" : ".")}`).join("")}`));
+      clear(ledger);
+      const t = h("table", { class: "f-table dense bw" });
+      t.appendChild(h("thead", null, h("tr", null, h("th", null, "grad of"), h("th", null, "local derivative"), h("th", null, `grad(${q.out}) × local derivative`))));
+      const vn = q.names, dts = op.dtex(vn, vals), dsubs = op.dsub ? op.dsub(vals.map(tnp)) : null;
+      t.appendChild(h("tbody", null, vn.map((a, i) => {
+        const parts = [dts[i]].concat(dsubs ? [dsubs[i]] : [], [tn(local[i])]).filter((p, j, arr) => j === 0 || p !== arr[j - 1]);
+        return h("tr", null, h("td", null, html(T(G(a)))), h("td", null, html(T(`${dn(q.out, a)} = ${parts.join(" = ")}`))), h("td", null, html(T(`${tn(g)} \\times ${tnp(local[i])} = ${tn(g * local[i])}`))));
+      })));
+      ledger.appendChild(t);
+    }
+    reset();
+    return mountGraph(wrap, draw, () => orient, pick);
+  }
 
   // ------------------------------------------------------------ network: a small MLP, forward pass with numbers
   const ACT = {

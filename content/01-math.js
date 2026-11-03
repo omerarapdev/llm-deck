@@ -1411,34 +1411,97 @@
         { v: "y", tex: "\\ln v", f: (v) => Math.log(v), df: (v) => 1 / v, dtex: "1/v", ddp: 4 },
       ],
     },
-    terms: [{ term: "Local derivative", def: "The derivative of one stage of a computation with respect to its own input, evaluated at the value that stage received." }],
+    terms: [{ term: "Local derivative", def: "The derivative of one operation of a computation with respect to one of its inputs, the others held fixed, evaluated at the values the operation received." }],
   });
+
+  // y = ln((w x + b)^2) at w = 3, x = 1, b = 1: the three-stage chain with its 3 and 1 named
+  const GRAPH_WXB = [
+    { id: "w", op: "param", value: 3, x: 0, y: 0 },
+    { id: "x", op: "input", value: 1, x: 0, y: 1 },
+    { id: "b", op: "param", value: 1, x: 0, y: 2 },
+    { id: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 },
+    { id: "u", op: "add", in: ["m", "b"], x: 2, y: 1 },
+    { id: "v", op: "square", in: ["u"], x: 3, y: 1 },
+    { id: "y", op: "log", in: ["v"], x: 4, y: 1 },
+  ];
 
   Deck.slide({
     id: "math-graph",
-    title: "A computation is a graph, evaluated forward and then backward",
-    body: String.raw`<p>Write every elementary operation as a node and every value it uses as an incoming edge. The result is a <b>computational graph</b>. The plate draws \(y = \ln((wx + b)^2)\) with \(w = 3,\) \(b = 1\) and \(x = 1\): the chain of the last sheet, with the 3 and the 1 named as parameters, the way a model's numbers are.</p>
-<p>The <b>forward pass</b> evaluates the nodes from inputs to output: \(m = 3,\) \(u = 4,\) \(v = 16,\) \(y = 2.7726.\) The <b>backward pass</b> starts from slope 1 at the output and walks the edges in reverse, multiplying by each node's local derivative: \(1 \times 0.0625 \times 8 = 0.5\) reaches \(u.\)</p>
-<p>From \(u\) the derivative passes along both incoming edges. It reaches \(b\) as 0.5 and \(m\) as 0.5. From \(m = w \cdot x\) it reaches \(w\) as \(0.5 \times x = 0.5\) and \(x\) as \(0.5 \times w = 1.5,\) the slope of the last sheet. One backward pass gives the derivative of the output with respect to every input.</p>
-<p>The plate writes grad(v) for the derivative of \(y\) with respect to a node \(v,\) and \(\partial v/\partial u\) for the local slope from \(u\) to \(v;\) \(\partial\) marks a derivative with respect to one of several inputs (chapter 1.4).</p>`,
+    title: "A computation is a graph of small operations, evaluated forward",
+    layout: "wide",
+    body: String.raw`<p>Split a formula into elementary operations. Draw each operation as a rounded box and each given number as a square box, with an edge from every value to each operation that uses it. The result is a <b>computational graph</b>. The plate draws \(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1\) and \(b = 1\): the three-stage chain of the last sheet, with its 3 and 1 given the names \(w\) and \(b.\) Models name their numbers the same way: \(w\) and \(b\) are parameters (blue), the numbers training changes, and \(x\) is an input.</p>
+<p>The graph has four operations: \(m = w \times x,\) \(u = m + b,\) \(v = u^2\) and \(y = \ln v.\) The <b>forward pass</b> evaluates them in order, each as soon as its inputs are known: \(m = 3,\) \(u = 4,\) \(v = 16\) and \(y = \ln 16 = 2.7726.\)</p>
+<p>The forward pass keeps every intermediate value, because the derivatives need them: the slope of \(v = u^2\) is \(2u,\) and it can be evaluated only because \(u = 4\) was kept. The next three sheets find the derivative of \(y\) with respect to every node.</p>`,
     fig: {
-      type: "graph", caption: String.raw`<span>\(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1,\) \(b = 1,\) after the forward pass. Step backward, or reset and step forward.</span>`,
-      dp: 4, gx: 122, gy: 82, bw: 98, start: 4,
-      nodes: [
-        { id: "w", op: "param", value: 3, x: 0, y: 0 },
-        { id: "x", op: "input", value: 1, x: 0, y: 1 },
-        { id: "b", op: "param", value: 1, x: 0, y: 2 },
-        { id: "m", label: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 },
-        { id: "u", label: "u", op: "add", in: ["m", "b"], x: 2, y: 1 },
-        { id: "v", label: "v", op: "square", in: ["u"], x: 3, y: 1 },
-        { id: "y", label: "y", op: "log", in: ["v"], x: 4, y: 1 },
-      ],
+      type: "graph", mode: "fw", dp: 4, start: 0, nodes: GRAPH_WXB,
+      caption: String.raw`<span>\(y = \ln((wx + b)^2)\) at \(w = 3,\) \(x = 1,\) \(b = 1.\) Square boxes are given numbers (blue: parameters), rounded boxes are operations, the thick box is the output. Each forward step computes one node from its incoming edges and adds a row to the table.</span>`,
     },
     terms: [
-      { term: "Computational graph", def: "A computation drawn as nodes (operations) and edges (the values they use). Evaluated forward for values and backward for derivatives." },
+      { term: "Computational graph", def: "A computation drawn as nodes (given numbers and operations) and edges (from each value to the operations that use it). Evaluated forward for values and backward for derivatives." },
       { term: "Forward pass", def: "Evaluating a computational graph from its inputs to its output, keeping every intermediate value." },
-      { term: "Backward pass", def: "Walking a computational graph from the output back to the inputs, multiplying local derivatives, to get the derivative of the output with respect to every input." },
     ],
+  });
+
+  Deck.slide({
+    id: "math-grad",
+    title: "grad(n) is how much the output moves per unit change of node n",
+    layout: "wide",
+    body: String.raw`<p>Training needs one number per parameter: how much the output changes when that parameter changes a little. The backward pass needs the same number for every node, because a parameter's number is built from those of the nodes after it. Call it the <b>grad</b> of node \(n,\) written \(\operatorname{grad}(n):\) when \(n\) rises by a small amount \(\varepsilon\) and every value not computed from \(n\) stays the same, the output rises by about \(\operatorname{grad}(n) \times \varepsilon.\) It is the derivative of the output with respect to \(n.\) PyTorch stores it next to each parameter, in a field named <code>.grad</code>.</p>
+<p>It can be measured. Raise \(w\) from 3 to 3.001 and run the forward pass again: \(m = 3.001,\) \(u = 4.001,\) \(v = 16.008001,\) and \(y\) rises by 0.00049994. The ratio is \(0.00049994/0.001 = 0.49994.\) Raising \(x\) by 0.001 instead gives 1.4994. As \(\varepsilon\) shrinks the two ratios settle at 0.5 and 1.5, so \(\operatorname{grad}(w) = 0.5\) and \(\operatorname{grad}(x) = 1.5.\) To raise an intermediate node such as \(u,\) overwrite its value (4 becomes 4.001) and recompute only the nodes after it; \(m\) and \(b\) keep their values.</p>
+<p>Measuring costs one extra forward pass per node, 6 here, and the ratio is never exact. The backward pass on the next sheet gets all 6 grads exactly, with one multiplication per edge.</p>`,
+    fig: {
+      type: "graph", mode: "nudge", dp: 4, nodes: GRAPH_WXB, nudge: { nodes: ["w", "x", "b", "m", "u", "v"], node: "w", eps: 0.001 },
+      caption: String.raw`<span>Raise one node by \(\varepsilon\): it and the nodes computed from it change; every other node keeps its value. The table lists \(\Delta y/\varepsilon\) for every node at the chosen \(\varepsilon.\)</span>`,
+    },
+    terms: [{ term: "grad(n)", def: "The derivative of a computation's output with respect to node n: the output rises by about grad(n) × ε when n rises by a small ε. PyTorch stores it next to each parameter, in a field named .grad." }],
+    check: {
+      q: String.raw`Raising \(b\) from 1 to 1.01 raises \(y\) from 2.7726 to 2.7776. Which number is closest to \(\operatorname{grad}(b)\)?`,
+      options: ["0.5", "0.005", "2.7776", "0.01"],
+      answer: 0,
+      why: String.raw`\(\Delta y = 2.7775825 - 2.7725887 = 0.0049938\) and \(\Delta y/\varepsilon = 0.0049938/0.01 = 0.49938,\) close to 0.5. The 0.005 is \(\Delta y\) before dividing by \(\varepsilon = 0.01,\) and 2.7776 is the new \(y.\)`,
+    },
+  });
+
+  Deck.slide({
+    id: "math-backward",
+    title: "The backward pass finds every grad from the output back, one edge at a time",
+    layout: "wide",
+    body: String.raw`<p>The <b>backward pass</b> visits the operations in the reverse of the forward order: \(y,\) \(v,\) \(u,\) \(m.\) It starts with \(\operatorname{grad}(y) = 1,\) since raising \(y\) by \(\varepsilon\) raises \(y\) by \(\varepsilon,\) then crosses each edge once, from a node \(n\) back to an input \(a.\)</p>
+<p>That edge's local derivative \(\partial n/\partial a\) is how much \(n\) moves per unit change of \(a,\) from \(n\)'s own formula at the values the forward pass kept (\(\partial\) marks a derivative with respect to one input, the others fixed; chapter 1.4). A small change \(\varepsilon\) in \(a\) moves \(n\) by \(\varepsilon \times \partial n/\partial a,\) and \(y\) by \(\operatorname{grad}(n)\) times that:</p>
+\[\operatorname{grad}(a) = \operatorname{grad}(n) \times \frac{\partial n}{\partial a}\]
+<p>This holds when \(a\) feeds only \(n;\) a value used by several operations gets one such term from each (two sheets on). The reverse order makes every user of \(n\) send its term before \(n\) sends its grad on.</p>
+<p>At \(y = \ln v\): \(\partial y/\partial v = 1/v = 0.0625,\) so \(\operatorname{grad}(v) = 0.0625.\) At \(v = u^2\): \(\partial v/\partial u = 2u = 8,\) so \(\operatorname{grad}(u) = 0.0625 \times 8 = 0.5,\) the value the last sheet's ratio for \(u\) (0.49994) approaches. These are the chain rule's products, built from the output end: \(1,\) then \(0.0625,\) then \(0.5.\)</p>`,
+    fig: {
+      type: "graph", dp: 4, start: 4, nodes: GRAPH_WXB,
+      caption: String.raw`<span>After the forward pass. Each backward step crosses one edge: the dashed node sends its grad back along the red arrow, the filled node receives it times the local derivative, and the table adds a row.</span>`,
+    },
+    terms: [{ term: "Backward pass", def: "Walking a computational graph from the output back to the inputs, multiplying local derivatives, to get the derivative of the output with respect to every input." }],
+  });
+
+  Deck.slide({
+    id: "math-local",
+    title: "Sums pass grads back unchanged; products scale them by the other factor",
+    body: String.raw`<p>A backward step needs only the grad arriving at one operation and that operation's local derivatives. So PyTorch writes one backward function per operation (Part 3 shows them) and runs it wherever that operation appears. Two of them finish our graph.</p>
+<p><b>Addition</b>, \(u = m + b\): raising either input by \(\varepsilon\) raises \(u\) by \(\varepsilon,\) so both local derivatives are 1 and both inputs receive \(\operatorname{grad}(u)\) unchanged: \(\operatorname{grad}(m) = \operatorname{grad}(b) = 0.5.\)</p>
+<p><b>Multiplication</b>, \(m = w \times x\): raising \(w\) by \(\varepsilon\) raises \(m\) by \(x\varepsilon,\) so \(\partial m/\partial w = x\) and \(\partial m/\partial x = w.\) Each input receives \(\operatorname{grad}(m)\) times the other input: \(\operatorname{grad}(w) = 0.5 \times 1 = 0.5\) and \(\operatorname{grad}(x) = 0.5 \times 3 = 1.5.\) The rule reads both input values, so every value that feeds a product must be kept.</p>
+<p>Two sheets back, raising \(w\) and \(x\) by 0.001 measured 0.49994 and 1.4994; these are the exact values those ratios approach. Training never uses \(\operatorname{grad}(x),\) since \(x\) is data, but it equals the \(dy/dx\) of the three-stage chain earlier in this chapter. The plate also has the rules met so far: square scales the grad by \(2u,\) ln divides it by \(v,\) exp scales it by \(e^x.\)</p>`,
+    fig: {
+      type: "graph", mode: "rule", dp: 4, start: 1,
+      caption: "One operation, the grad arriving from the rest of the graph (held at its value in our graph), and what each input receives. The sliders move only the inputs: through + the grad is unchanged; through × it is scaled by the other input.",
+      rules: [
+        { label: "add", op: "add", names: ["m", "b"], out: "u", values: [3, 1], ranges: [[-4, 4, 0.5], [-4, 4, 0.5]], g: 0.5, say: "Both inputs receive the arriving grad unchanged, whatever their values." },
+        { label: "multiply", op: "mul", names: ["w", "x"], out: "m", values: [3, 1], ranges: [[-4, 4, 0.5], [-4, 4, 0.5]], g: 0.5, say: "Each input receives the arriving grad times the other input." },
+        { label: "square", op: "square", names: ["u"], out: "v", values: [4], ranges: [[-4, 4, 0.5]], g: 0.0625, say: String.raw`The grad is scaled by \(2u,\) so it flips sign when \(u\) does.` },
+        { label: "ln", op: "log", names: ["v"], out: "y", values: [16], ranges: [[1, 20, 1]], g: 1, rest: false, say: String.raw`Here \(y\) is the output, so \(\operatorname{grad}(y) = 1,\) and the grad is divided by \(v.\)` },
+        { label: "exp", op: "exp", names: ["x"], out: "s", values: [1], ranges: [[-2, 2, 0.5]], g: 1, say: String.raw`The grad is scaled by \(e^x,\) which is the output \(s\) itself.` },
+      ],
+    },
+    check: {
+      q: String.raw`\(m = w \times x\) with \(w = {-2}\) and \(x = 5,\) and \(\operatorname{grad}(m) = 0.5.\) What is \(\operatorname{grad}(w)\)?`,
+      options: ["2.5", "−1", "0.5", "5"],
+      answer: 0,
+      why: String.raw`\(\partial m/\partial w = x = 5,\) so \(\operatorname{grad}(w) = 0.5 \times 5 = 2.5.\) Using \(w\) itself gives \(0.5 \times ({-2}) = {-1},\) which is \(\operatorname{grad}(x).\) Passing 0.5 back unchanged is the rule for addition, and 5 is the local derivative before it is multiplied by \(\operatorname{grad}(m).\)`,
+    },
   });
 
   Deck.slide({
@@ -1450,12 +1513,18 @@
 <p>Numeric check: \((1.001\,e^{1.001} - 0.999\,e^{0.999})/0.002 = 5.4366.\) Backpropagation implements the sum with <code>+=</code>: each path adds its share into the derivative stored for the shared value.</p>`,
     fig: {
       type: "graph", caption: String.raw`<span>\(y = x \cdot e^x\) at \(x = 1.\) Step backward: the derivative stored at \(x\) grows by one path at a time.</span>`,
-      dp: 4, gx: 190, gy: 92, bw: 110, start: 2,
+      dp: 4, start: 2,
       nodes: [
         { id: "x", op: "input", value: 1, x: 0, y: 1 },
         { id: "s", label: "s", op: "exp", in: ["x"], x: 1, y: 0 },
         { id: "y", label: "y", op: "mul", in: ["s", "x"], x: 2, y: 1 },
       ],
+    },
+    check: {
+      q: String.raw`\(y = (a + b) \times b\) at \(a = 2\) and \(b = 3.\) What is \(\operatorname{grad}(b)\)?`,
+      options: ["8", "5", "3", "15"],
+      answer: 0,
+      why: String.raw`With \(s = a + b = 5,\) \(\operatorname{grad}(s) = \operatorname{grad}(y) \times b = 3.\) \(b\) is used twice: inside \(s\) it gives \(3 \times 1 = 3,\) and directly in the product it gives \(\operatorname{grad}(y) \times s = 5.\) The terms add: \(3 + 5 = 8,\) which is \(a + 2b,\) the derivative of \(ab + b^2.\) 5 and 3 are one use each; 15 is \(y\) itself.`,
     },
     terms: [{ term: "Sum over paths", def: "The derivative of an output with respect to a value used more than once: multiply local derivatives along each path from the value to the output, then add the paths." }],
   });

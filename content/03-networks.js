@@ -654,12 +654,13 @@ out = act @ w2                             # 8 × 16`,
   Deck.slide({
     id: "nn-bp-graph",
     title: "The backward pass multiplies local derivatives from the loss back",
+    layout: "wide",
     body: String.raw`<p>As in Part 1, the backward pass starts from \(\partial L/\partial L = 1\) and visits the operations in reverse. At each one it multiplies the gradient arriving from above by the local derivative and sends the product to each input. A value that feeds several operations adds up what comes back from each.</p>
 <p>Here \(\partial L/\partial e = 2e = {-1.2}\). Addition and subtraction pass it on unchanged, so \(\partial L/\partial z = \partial L/\partial m = \partial L/\partial b = {-1.2}\). The multiplication sends \({-1.2} \times x = {-1.8}\) to \(w\) and \({-1.2} \times w = {-0.96}\) to \(x\).</p>
 <p>Check with a finite difference: \(L(w + 0.001) = 0.35820225\) and \(L(w - 0.001) = 0.36180225\), so the slope is \({-0.0036} / 0.002 = {-1.8}\). Each edge of the graph is crossed once forward and once backward, so the backward pass costs a small constant times the forward pass: twice, for the matrix multiplies of a network (end of this chapter).</p>`,
     math: String.raw`\begin{aligned}\frac{\partial L}{\partial w} &= \frac{\partial L}{\partial e}\,\frac{\partial e}{\partial z}\,\frac{\partial z}{\partial m}\,\frac{\partial m}{\partial w} \\ &= ({-1.2})(1)(1)(1.5) = {-1.8}\end{aligned}`,
     fig: {
-      type: "graph", caption: "L = (w·x + b − y)² with w = 0.8, x = 1.5, b = 0.2, y = 2. Reset, then step forward and backward.", dp: 2, start: 11, gx: 138, gy: 84,
+      type: "graph", caption: "L = (w·x + b − y)² with w = 0.8, x = 1.5, b = 0.2, y = 2. Reset, then step forward and backward.", dp: 2, start: 11,
       nodes: [
         { id: "w", op: "param", value: 0.8, x: 0, y: 0 }, { id: "x", op: "input", value: 1.5, x: 0, y: 1 }, { id: "b", op: "param", value: 0.2, x: 0, y: 2 }, { id: "y", op: "input", value: 2, x: 2, y: 2 },
         { id: "m", label: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 }, { id: "z", label: "z", op: "add", in: ["m", "b"], x: 2, y: 1 },

@@ -387,6 +387,9 @@
         const prev = mo.previousElementSibling;
         const prefix = !prev || (prev.localName === "mo" && prev.textContent.trim() !== "" && !/^[)\]}|⟩!′″]$/.test(prev.textContent.trim()));
         if (prefix) { mo.setAttribute("lspace", "0em"); mo.setAttribute("rspace", "0em"); }
+      } else if (c === "=" && !mo.previousElementSibling && !mo.hasAttribute("lspace")) {
+        // a formula that starts with "=" continues the one before it, after an ordinary space
+        mo.setAttribute("lspace", "0em");
       } else if (c === "\u2061") {
         mo.setAttribute("lspace", "0em");
         mo.setAttribute("rspace", "0em");

@@ -89,7 +89,7 @@ add<<<4, 256>>>(a, b, c, 1000);`, notes: { 1: "<code>__global__</code> marks a f
     id: "g-graph", title: "graph: forward and backward", body: "<p>Nodes are evaluated in order, then gradients flow back along each edge.</p>",
     fig: { type: "graph", caption: "L = (w·x + b − y)²", dp: 2, nodes: [
       { id: "w", op: "param", value: 0.5, x: 0, y: 0 }, { id: "x", op: "input", value: 3, x: 0, y: 1 }, { id: "b", op: "param", value: 0.2, x: 0, y: 2 }, { id: "y", op: "input", value: 7, x: 2, y: 2 },
-      { id: "m", label: "w·x", op: "mul", in: ["w", "x"], x: 1, y: 0.5 }, { id: "z", label: "z", op: "add", in: ["m", "b"], x: 2, y: 1 },
+      { id: "m", label: "m", op: "mul", in: ["w", "x"], x: 1, y: 0.5 }, { id: "z", label: "z", op: "add", in: ["m", "b"], x: 2, y: 1 },
       { id: "e", label: "e", op: "sub", in: ["z", "y"], x: 3, y: 1.5 }, { id: "L", label: "L", op: "square", in: ["e"], x: 4, y: 1.5 }] },
   });
   Deck.slide({
